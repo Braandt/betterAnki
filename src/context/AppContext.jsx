@@ -102,6 +102,12 @@ export function AppProvider({ children }) {
         persistPhrases(newPhrases);
     }
 
+    function addPhrase({ text, answer, tags, type, clozeIndices }) {
+        const phrase = createPhrase({ text, answer, tags, type, clozeIndices });
+        setPhrases((prev) => [...prev, phrase]);
+        return phrase;
+    }
+
     const value = {
         status,
         connectFolder,

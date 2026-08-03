@@ -19,13 +19,19 @@ export default function WordList() {
     const editingWord = words.find((w) => w.id === editingId) ?? null;
 
     return (
-        <div className="max-w-2xl mx-auto pt-32 px-4 pb-24">
+        <div className="max-w-2xl mx-auto pt-20 px-4 pb-24">
             <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search words..."
-                className="border rounded px-3 py-2 w-full mb-4"
+                className="border rounded px-3 py-2 w-full mb-2"
             />
+
+            <p className="text-sm text-gray-400 mb-4">
+                {search.trim()
+                    ? `${filtered.length} of ${words.length} words`
+                    : `${words.length} word${words.length === 1 ? '' : 's'}`}
+            </p>
 
             {filtered.length === 0 && (
                 <p className="text-gray-400 text-sm">No words found.</p>
@@ -37,7 +43,7 @@ export default function WordList() {
                         <div>
                             <p className="font-medium capitalize">{word.text}</p>
                             <p className="text-sm text-gray-500">{word.definition}</p>
-                            {word.notes && <p className="text-xs text-gray-400 mt-1">{word.notes}</p>}
+                            {word.notes && <p className="text-xs text-gray-400 mt-1 whitespace-pre-line">{word.notes}</p>}
                         </div>
                         <div className="flex gap-2 shrink-0">
                             <button onClick={() => setEditingId(word.id)} className="text-sm text-blue-600">

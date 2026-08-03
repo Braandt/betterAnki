@@ -1,46 +1,73 @@
 // features/phrases/PhraseList.jsx
 import { useState, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
+import { getAllTags } from '../../lib/tags';
+import TagInput from '../../components/TagInput';
 
 export default function PhraseList() {
     const { phrases, updatePhrase, deletePhrase } = useApp();
     const [search, setSearch] = useState('');
+    const [activeTags, setActiveTags] = useState([]);
     const [editingId, setEditingId] = useState(null);
     const [draftText, setDraftText] = useState('');
     const [draftAnswer, setDraftAnswer] = useState('');
+    const [draftTags, setDraftTags] = useState([]);
+
+    const allTags = getAllTags(phrases);
 
     const filtered = useMemo(() => {
         const q = search.toLowerCase().trim();
-        if (!q) return phrases;
-        return phrases.filter(
-            (p) => p.text.toLowerCase().includes(q) || p.answer.toLowerCase().includes(q)
-        );
-    }, [phrases, search]);
+        return phrases.filter((p) => {
+            const matchesSearch = !q || p.text.toLowerCase().includes(q) || p.answer.toLowerCase().includes(q);
+            const matchesTags = activeTags.every((t) => (p.tags || []).includes(t));
+            return matchesSearch && matchesTags;
+        });
+    }, [phrases, search, activeTags]);
+
+    function toggleTag(tag) {
+        setActiveTags((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]));
+    }
 
     function startEdit(phrase) {
         setEditingId(phrase.id);
         setDraftText(phrase.text);
         setDraftAnswer(phrase.answer);
+        setDraftTags(phrase.tags ?? []);
     }
 
     function saveEdit(id) {
         if (!draftText.trim() || !draftAnswer.trim()) return;
-        updatePhrase(id, { text: draftText.trim(), answer: draftAnswer.trim() });
+        updatePhrase(id, { text: draftText.trim(), answer: draftAnswer.trim(), tags: draftTags });
         setEditingId(null);
     }
 
     return (
-        <div className="max-w-2xl mx-auto pt-32 px-4 pb-24">
+        <div className="max-w-2xl mx-auto pt-20 px-4 pb-24">
             <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search phrases..."
-                className="border rounded px-3 py-2 w-full mb-4"
+                className="border rounded px-3 py-2 w-full mb-3"
             />
 
-            {filtered.length === 0 && (
-                <p className="text-gray-400 text-sm">No phrases found.</p>
+            {allTags.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mb-4">
+                    {allTags.map((tag) => (
+                        <button
+                            key={tag}
+                            onClick={() => toggleTag(tag)}
+                            className={`text-xs px-2.5 py-1 rounded-full border ${activeTags.includes(tag)
+                                ? 'bg-blue-600 text-white border-blue-600'
+                                : 'text-gray-500 border-gray-300 hover:bg-gray-50'
+                                }`}
+                        >
+                            {tag}
+                        </button>
+                    ))}
+                </div>
             )}
+
+            {filtered.length === 0 && <p className="text-gray-400 text-sm">No phrases found.</p>}
 
             <ul className="flex flex-col gap-2">
                 {filtered.map((phrase) => (
@@ -58,14 +85,12 @@ export default function PhraseList() {
                                     onChange={(e) => setDraftAnswer(e.target.value)}
                                     className="border rounded px-2 py-1"
                                 />
+                                <TagInput tags={draftTags} onChange={setDraftTags} suggestions={allTags} />
                                 <div className="flex gap-2 justify-end">
                                     <button onClick={() => setEditingId(null)} className="text-sm text-gray-500 px-2">
                                         Cancel
                                     </button>
-                                    <button
-                                        onClick={() => saveEdit(phrase.id)}
-                                        className="text-sm bg-blue-600 text-white rounded px-3 py-1"
-                                    >
+                                    <button onClick={() => saveEdit(phrase.id)} className="text-sm bg-blue-600 text-white rounded px-3 py-1">
                                         Save
                                     </button>
                                 </div>
@@ -73,13 +98,22 @@ export default function PhraseList() {
                         ) : (
                             <div className="flex justify-between items-start gap-3">
                                 <div>
-                                    <div className='flex items-center gap-2'>
+                                    <div className="flex items-center gap-2 flex-wrap">
                                         <p className="font-medium">{phrase.text}</p>
-                                        <span className='text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-500'>
-                                            {phrase.type === 'input' ? 'type answer' : 'flip'}
+                                        <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">
+                                            {phrase.type === 'input' ? 'type answer' : phrase.type === 'cloze' ? 'cloze' : 'flip'}
                                         </span>
                                     </div>
                                     <p className="text-sm text-gray-500">{phrase.answer}</p>
+                                    {phrase.tags?.length > 0 && (
+                                        <div className="flex flex-wrap gap-1 mt-1.5">
+                                            {phrase.tags.map((tag) => (
+                                                <span key={tag} className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full">
+                                                    {tag}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="flex gap-2 shrink-0">
                                     <button onClick={() => startEdit(phrase)} className="text-sm text-blue-600">

@@ -41,12 +41,12 @@ export default function ClickableText({ text }) {
                             {token.text}
 
                             {isHovered && (
-                                <span className="absolute left-1/2 -translate-x-1/2 top-full mt-2 z-10 w-max max-w-xs rounded bg-gray-800 text-white text-sm px-3 py-2 shadow-lg text-left">
+                                <span className="absolute left-1/2 -translate-x-1/2 top-full mt-2 z-10 w-max max-w-xs rounded bg-gray-800 text-white px-3 py-2 shadow-lg text-left text-base">
                                     {entry ? (
                                         <span className="flex flex-col gap-1">
-                                            <span>{entry.definition}</span>
+                                            <span className='whitespace-pre-line'>{entry.definition}</span>
                                             {entry.notes && (
-                                                <span className="text-gray-300 text-xs border-t border-gray-600 pt-1 mt-1">
+                                                <span className="text-gray-300 border-t border-gray-600 pt-1 mt-1 whitespace-pre-line">
                                                     {entry.notes}
                                                 </span>
                                             )}

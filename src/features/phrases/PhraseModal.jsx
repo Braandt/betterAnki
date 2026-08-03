@@ -1,30 +1,85 @@
 // features/phrases/PhraseModal.jsx
 import { useState, useEffect } from 'react';
 import Modal from '../../components/Modal';
+import TagInput from '../../components/TagInput';
+import { getAllTags } from '../../lib/tags';
+import { tokenize } from '../../lib/tokenize';
 import { useApp } from '../../context/AppContext';
 
+function ClozeWordPicker({ text, selected, onToggle }) {
+    const tokens = tokenize(text);
+    if (!text.trim()) return null;
+
+    return (
+        <div>
+            <p className="text-xs text-gray-400 mb-1">Click the word(s) to blank out:</p>
+            <p className="text-lg leading-relaxed border rounded px-3 py-2 bg-gray-50">
+                {tokens.map((token, i) => {
+                    if (!token.isWord) return <span key={i}>{token.text}</span>;
+                    const isSelected = selected.includes(i);
+                    return (
+                        <span
+                            key={i}
+                            onClick={() => onToggle(i)}
+                            className={`cursor-pointer rounded px-0.5 ${isSelected ? 'bg-blue-600 text-white' : 'hover:bg-yellow-200'
+                                }`}
+                        >
+                            {token.text}
+                        </span>
+                    );
+                })}
+            </p>
+        </div>
+    );
+}
+
 export default function PhraseModal({ open, onClose, existingPhrase = null }) {
-    const { addPhrase, updatePhrase } = useApp();
+    const { addPhrase, updatePhrase, phrases } = useApp();
     const [text, setText] = useState('');
     const [answer, setAnswer] = useState('');
     const [type, setType] = useState('flip');
+    const [tags, setTags] = useState([]);
+    const [clozeIndices, setClozeIndices] = useState([]);
 
-    // Repopulate fields whenever a different phrase is opened for editing,
-    // or reset to blank when opening in "add" mode.
+    const allTags = getAllTags(phrases);
+
     useEffect(() => {
         setText(existingPhrase?.text ?? '');
         setAnswer(existingPhrase?.answer ?? '');
         setType(existingPhrase?.type ?? 'flip');
+        setTags(existingPhrase?.tags ?? []);
+        setClozeIndices(existingPhrase?.clozeIndices ?? []);
     }, [open, existingPhrase]);
+
+    // Blank selections refer to token positions in `text` — if the text
+    // changes, old indices could point at the wrong words, so reset them.
+    function handleTextChange(e) {
+        setText(e.target.value);
+        setClozeIndices([]);
+    }
+
+    function toggleClozeIndex(i) {
+        setClozeIndices((prev) => (prev.includes(i) ? prev.filter((x) => x !== i) : [...prev, i].sort((a, b) => a - b)));
+    }
 
     function handleSubmit(e) {
         e?.preventDefault();
-        if (!text.trim() || !answer.trim()) return;
+        if (!text.trim()) return;
+        if (type === 'cloze' && clozeIndices.length === 0) return; // must pick at least one blank
+        if (type !== 'cloze' && !answer.trim()) return;
+
+        const payload = {
+            text: text.trim(),
+            answer: answer.trim(),
+            type,
+            tags,
+            clozeIndices: type === 'cloze' ? clozeIndices : [],
+        };
 
         if (existingPhrase) {
-            updatePhrase(existingPhrase.id, { text: text.trim(), answer: answer.trim(), type });
+            updatePhrase(existingPhrase.id, payload);
         } else {
-            addPhrase({ text: text.trim(), answer: answer.trim(), type });
+            addPhrase(payload);
         }
         onClose();
     }
@@ -51,21 +106,44 @@ export default function PhraseModal({ open, onClose, existingPhrase = null }) {
                     >
                         Type answer
                     </button>
+                    <button
+                        type="button"
+                        onClick={() => setType('cloze')}
+                        className={`flex-1 px-3 py-2 rounded text-sm font-medium border ${type === 'cloze' ? 'bg-blue-600 text-white border-blue-600' : 'text-gray-600 border-gray-300'
+                            }`}
+                    >
+                        Cloze
+                    </button>
                 </div>
 
                 <input
                     autoFocus
                     value={text}
-                    onChange={(e) => setText(e.target.value)}
-                    placeholder="Phrase (e.g. Ich habe einen Hund.)"
+                    onChange={handleTextChange}
+                    placeholder="Phrase (e.g. Jeg spiste frokost.)"
                     className="border rounded px-3 py-2"
                 />
-                <input
-                    value={answer}
-                    onChange={(e) => setAnswer(e.target.value)}
-                    placeholder="Answer / translation"
-                    className="border rounded px-3 py-2"
-                />
+
+                {type === 'cloze' ? (
+                    <>
+                        <ClozeWordPicker text={text} selected={clozeIndices} onToggle={toggleClozeIndex} />
+                        <input
+                            value={answer}
+                            onChange={(e) => setAnswer(e.target.value)}
+                            placeholder="Translation (optional)"
+                            className="border rounded px-3 py-2"
+                        />
+                    </>
+                ) : (
+                    <input
+                        value={answer}
+                        onChange={(e) => setAnswer(e.target.value)}
+                        placeholder="Answer / translation"
+                        className="border rounded px-3 py-2"
+                    />
+                )}
+
+                <TagInput tags={tags} onChange={setTags} suggestions={allTags} />
 
                 <div className="flex justify-end gap-2 mt-2">
                     <button type="button" onClick={onClose} className="px-3 py-1.5 text-gray-500">

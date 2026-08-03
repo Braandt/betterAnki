@@ -1,36 +1,12 @@
-// // data/phrasesStore.js
-// import { loadCollection, saveCollection } from './storage';
-
-// const KEY = 'phrases';
-
-// export function loadPhrases() {
-//     return loadCollection(KEY);
-// }
-
-// export function savePhrases(phrases) {
-//     saveCollection(KEY, phrases);
-// }
-
-// export function createPhrase({ text, answer, tags = [], type = 'flip' }) {
-//     return {
-//         id: crypto.randomUUID(),
-//         text,
-//         answer,
-//         tags,
-//         type, // 'flip' (press space to reveal) or 'input' (type the answer)
-//         srs: { interval: 0, ease: 2.5, due: Date.now(), reps: 0 },
-//         createdAt: Date.now(),
-//     };
-// }
-
 // data/phrasesStore.js
-export function createPhrase({ text, answer, tags = [], type = 'flip' }) {
+export function createPhrase({ text, answer = '', tags = [], type = 'flip', clozeIndices = [] }) {
     return {
         id: crypto.randomUUID(),
         text,
         answer,
         tags,
-        type,
+        type, // 'flip' | 'input' | 'cloze'
+        clozeIndices, // token indices (from tokenize) that are blanked, only used when type === 'cloze'
         srs: { interval: 0, ease: 2.5, due: Date.now(), reps: 0 },
         createdAt: Date.now(),
     };
