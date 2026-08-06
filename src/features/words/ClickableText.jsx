@@ -4,7 +4,7 @@ import { tokenize } from '../../lib/tokenize';
 import { useApp } from '../../context/AppContext';
 import WordEditorModal from './WordEditorModal';
 
-export default function ClickableText({ text }) {
+export default function ClickableText({ text, onPracticeWord }) {
     const { wordDict, addWord, updateWord } = useApp();
     const [hoveredKey, setHoveredKey] = useState(null);
     const [editingKey, setEditingKey] = useState(null);
@@ -41,18 +41,30 @@ export default function ClickableText({ text }) {
                             {token.text}
 
                             {isHovered && (
-                                <span className="absolute left-1/2 -translate-x-1/2 top-full mt-2 z-10 w-max max-w-xs rounded bg-gray-800 text-white px-3 py-2 shadow-lg text-left text-base">
+                                <span className="absolute left-1/2 -translate-x-1/2 top-full mt-2 z-10 w-max max-w-xs rounded bg-gray-800 text-white text-sm px-3 py-2 shadow-lg text-left flex flex-col gap-1.5">
                                     {entry ? (
                                         <span className="flex flex-col gap-1">
-                                            <span className='whitespace-pre-line'>{entry.definition}</span>
+                                            <span>{entry.definition}</span>
                                             {entry.notes && (
-                                                <span className="text-gray-300 border-t border-gray-600 pt-1 mt-1 whitespace-pre-line">
+                                                <span className="text-gray-300 text-xs border-t border-gray-600 pt-1 mt-1 whitespace-pre-line">
                                                     {entry.notes}
                                                 </span>
                                             )}
                                         </span>
                                     ) : (
-                                        'Click to add definition'
+                                        <span>Click to add definition</span>
+                                    )}
+
+                                    {onPracticeWord && (
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation(); // don't also trigger the word's onClick (edit)
+                                                onPracticeWord(token.key);
+                                            }}
+                                            className="text-left text-yellow-300 text-xs underline hover:text-yellow-200 border-t border-gray-600 pt-1"
+                                        >
+                                            Practice this word →
+                                        </button>
                                     )}
                                 </span>
                             )}

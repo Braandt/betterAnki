@@ -1,12 +1,21 @@
 // data/phrasesStore.js
-export function createPhrase({ text, answer = '', tags = [], type = 'flip', clozeIndices = [] }) {
+export function createPhrase({
+    id = crypto.randomUUID(),
+    text,
+    answer = '',
+    tags = [],
+    type = 'flip',
+    clozeIndices = [],
+    hasAudio = false,
+}) {
     return {
-        id: crypto.randomUUID(),
+        id,
         text,
         answer,
         tags,
-        type, // 'flip' | 'input' | 'cloze'
-        clozeIndices, // token indices (from tokenize) that are blanked, only used when type === 'cloze'
+        type,
+        clozeIndices,
+        hasAudio, // whether an audio/<id>.webm recording exists
         srs: { interval: 0, ease: 2.5, due: Date.now(), reps: 0 },
         createdAt: Date.now(),
     };

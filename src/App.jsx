@@ -1,21 +1,26 @@
 // App.jsx
 import { useState, useEffect } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
-import ConnectFolder from './components/ConnectFolder';
 import NavBar from './components/NavBar';
 import ReviewScreen from './features/review/ReviewScreen';
 import PhraseList from './features/phrases/PhraseList';
 import WordList from './features/words/WordList';
 import PhraseModal from './features/phrases/PhraseModal';
 import CustomStudyModal from './features/study/CustomStudyModal';
+import Login from './components/Login';
 
 function Home() {
     const { phrases, updatePhrase } = useApp();
     const [view, setView] = useState('review');
     const [showAddPhrase, setShowAddPhrase] = useState(false);
     const [showCustomStudy, setShowCustomStudy] = useState(false);
-    const [studyTags, setStudyTags] = useState(null);
-    const [studyIncludeAll, setStudyIncludeAll] = useState(false);
+    const [studyFilter, setStudyFilter] = useState(null); // null = normal review, else { tags, words, includeAll }
+    const [prefillWords, setPrefillWords] = useState([]); // used when jumping in from "practice this word"
+
+    function startWordPractice(wordKey) {
+        setPrefillWords([wordKey]);
+        setShowCustomStudy(true);
+    }
 
     useEffect(() => {
         function handleKeyDown(e) {
@@ -37,12 +42,11 @@ function Home() {
             <NavBar view={view} onChange={setView} />
 
             <button
-                onClick={() => setShowCustomStudy(true)}
+                onClick={() => { setPrefillWords([]); setShowCustomStudy(true); }}
                 className="fixed top-16 right-4 z-20 text-sm bg-white border rounded-full px-3 py-1.5 text-gray-600 hover:bg-gray-50 shadow-sm"
             >
                 Custom study
             </button>
-
             {view === 'review' &&
                 (phrases.length === 0 ? (
                     <div className="min-h-screen flex items-center justify-center text-gray-500">
@@ -50,12 +54,14 @@ function Home() {
                     </div>
                 ) : (
                     <ReviewScreen
-                        key={studyTags ? studyTags.join(',') + studyIncludeAll : 'default'}
+                        key={studyFilter ? JSON.stringify(studyFilter) : 'default'}
                         phrases={phrases}
-                        filterTags={studyTags ?? []}
-                        includeAll={studyIncludeAll}
-                        onExit={studyTags ? () => { setStudyTags(null); setStudyIncludeAll(false); } : undefined}
+                        filterTags={studyFilter?.tags ?? []}
+                        filterWords={studyFilter?.words ?? []}
+                        includeAll={studyFilter?.includeAll ?? false}
+                        onExit={studyFilter ? () => setStudyFilter(null) : undefined}
                         onGrade={(phrase, newSrs) => updatePhrase(phrase.id, { srs: newSrs })}
+                        onPracticeWord={startWordPractice}
                     />
                 ))}
 
@@ -74,10 +80,10 @@ function Home() {
 
             <CustomStudyModal
                 open={showCustomStudy}
+                initialWords={prefillWords}
                 onClose={() => setShowCustomStudy(false)}
-                onStart={({ tags, includeAll }) => {
-                    setStudyTags(tags);
-                    setStudyIncludeAll(includeAll);
+                onStart={(filter) => {
+                    setStudyFilter(filter);
                     setView('review');
                 }}
             />
@@ -86,8 +92,11 @@ function Home() {
 }
 
 function Root() {
-    const { status } = useApp();
-    return status === 'connected' ? <Home /> : <ConnectFolder />;
+    const { session } = useApp();
+    if (session === undefined) {
+        return <div className="min-h-screen flex items-center justify-center text-gray-400">Loading...</div>;
+    }
+    return session ? <Home /> : <Login />;
 }
 
 export default function App() {

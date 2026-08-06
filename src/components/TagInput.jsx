@@ -1,7 +1,7 @@
 // components/TagInput.jsx
 import { useState, useMemo } from 'react';
 
-export default function TagInput({ tags, onChange, suggestions = [] }) {
+export default function TagInput({ tags, onChange, suggestions = [], placeholder = 'Add tags...' }) {
     const [draft, setDraft] = useState('');
 
     const filteredSuggestions = useMemo(() => {
@@ -47,8 +47,8 @@ export default function TagInput({ tags, onChange, suggestions = [] }) {
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder={tags.length === 0 ? 'Add tags... (past-tense, question)' : ''}
-                className="flex-1 min-w-[100px] outline-none text-sm py-0.5"
+                placeholder={tags.length === 0 ? placeholder : ''}
+                className="flex-1 min-w-25 outline-none text-sm py-0.5"
             />
             {filteredSuggestions.length > 0 && (
                 <div className="absolute left-0 top-full mt-1 w-full bg-white border rounded shadow-lg z-10 text-sm">

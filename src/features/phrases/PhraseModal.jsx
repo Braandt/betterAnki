@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import Modal from '../../components/Modal';
 import TagInput from '../../components/TagInput';
+import AudioRecorder from '../../components/AudioRecorder';
 import { getAllTags } from '../../lib/tags';
 import { tokenize } from '../../lib/tokenize';
 import { useApp } from '../../context/AppContext';
@@ -34,25 +35,37 @@ function ClozeWordPicker({ text, selected, onToggle }) {
 }
 
 export default function PhraseModal({ open, onClose, existingPhrase = null }) {
-    const { addPhrase, updatePhrase, phrases } = useApp();
+    const { addPhrase, updatePhrase, phrases, saveAudio, removeAudio, getAudioUrl } = useApp();
+    const [phraseId, setPhraseId] = useState(null);
     const [text, setText] = useState('');
     const [answer, setAnswer] = useState('');
     const [type, setType] = useState('flip');
     const [tags, setTags] = useState([]);
     const [clozeIndices, setClozeIndices] = useState([]);
+    const [existingAudioUrl, setExistingAudioUrl] = useState(null);
+    const [audioAction, setAudioAction] = useState(null); // null | {type:'recorded', blob} | {type:'deleted'}
 
     const allTags = getAllTags(phrases);
 
     useEffect(() => {
+        if (!open) return;
+
+        const id = existingPhrase?.id ?? crypto.randomUUID();
+        setPhraseId(id);
         setText(existingPhrase?.text ?? '');
         setAnswer(existingPhrase?.answer ?? '');
         setType(existingPhrase?.type ?? 'flip');
         setTags(existingPhrase?.tags ?? []);
         setClozeIndices(existingPhrase?.clozeIndices ?? []);
+        setAudioAction(null);
+
+        if (existingPhrase?.hasAudio) {
+            getAudioUrl(existingPhrase.id).then(setExistingAudioUrl);
+        } else {
+            setExistingAudioUrl(null);
+        }
     }, [open, existingPhrase]);
 
-    // Blank selections refer to token positions in `text` — if the text
-    // changes, old indices could point at the wrong words, so reset them.
     function handleTextChange(e) {
         setText(e.target.value);
         setClozeIndices([]);
@@ -62,11 +75,20 @@ export default function PhraseModal({ open, onClose, existingPhrase = null }) {
         setClozeIndices((prev) => (prev.includes(i) ? prev.filter((x) => x !== i) : [...prev, i].sort((a, b) => a - b)));
     }
 
-    function handleSubmit(e) {
+    async function handleSubmit(e) {
         e?.preventDefault();
         if (!text.trim()) return;
-        if (type === 'cloze' && clozeIndices.length === 0) return; // must pick at least one blank
+        if (type === 'cloze' && clozeIndices.length === 0) return;
         if (type !== 'cloze' && !answer.trim()) return;
+
+        let hasAudio = existingPhrase?.hasAudio ?? false;
+        if (audioAction?.type === 'recorded') {
+            await saveAudio(phraseId, audioAction.blob);
+            hasAudio = true;
+        } else if (audioAction?.type === 'deleted') {
+            await removeAudio(phraseId);
+            hasAudio = false;
+        }
 
         const payload = {
             text: text.trim(),
@@ -74,12 +96,13 @@ export default function PhraseModal({ open, onClose, existingPhrase = null }) {
             type,
             tags,
             clozeIndices: type === 'cloze' ? clozeIndices : [],
+            hasAudio,
         };
 
         if (existingPhrase) {
             updatePhrase(existingPhrase.id, payload);
         } else {
-            addPhrase(payload);
+            addPhrase({ id: phraseId, ...payload });
         }
         onClose();
     }
@@ -90,28 +113,13 @@ export default function PhraseModal({ open, onClose, existingPhrase = null }) {
                 <h2 className="text-lg font-semibold">{existingPhrase ? 'Edit phrase' : 'Add phrase'}</h2>
 
                 <div className="flex gap-2">
-                    <button
-                        type="button"
-                        onClick={() => setType('flip')}
-                        className={`flex-1 px-3 py-2 rounded text-sm font-medium border ${type === 'flip' ? 'bg-blue-600 text-white border-blue-600' : 'text-gray-600 border-gray-300'
-                            }`}
-                    >
+                    <button type="button" onClick={() => setType('flip')} className={`flex-1 px-3 py-2 rounded text-sm font-medium border ${type === 'flip' ? 'bg-blue-600 text-white border-blue-600' : 'text-gray-600 border-gray-300'}`}>
                         Flip card
                     </button>
-                    <button
-                        type="button"
-                        onClick={() => setType('input')}
-                        className={`flex-1 px-3 py-2 rounded text-sm font-medium border ${type === 'input' ? 'bg-blue-600 text-white border-blue-600' : 'text-gray-600 border-gray-300'
-                            }`}
-                    >
+                    <button type="button" onClick={() => setType('input')} className={`flex-1 px-3 py-2 rounded text-sm font-medium border ${type === 'input' ? 'bg-blue-600 text-white border-blue-600' : 'text-gray-600 border-gray-300'}`}>
                         Type answer
                     </button>
-                    <button
-                        type="button"
-                        onClick={() => setType('cloze')}
-                        className={`flex-1 px-3 py-2 rounded text-sm font-medium border ${type === 'cloze' ? 'bg-blue-600 text-white border-blue-600' : 'text-gray-600 border-gray-300'
-                            }`}
-                    >
+                    <button type="button" onClick={() => setType('cloze')} className={`flex-1 px-3 py-2 rounded text-sm font-medium border ${type === 'cloze' ? 'bg-blue-600 text-white border-blue-600' : 'text-gray-600 border-gray-300'}`}>
                         Cloze
                     </button>
                 </div>
@@ -127,23 +135,15 @@ export default function PhraseModal({ open, onClose, existingPhrase = null }) {
                 {type === 'cloze' ? (
                     <>
                         <ClozeWordPicker text={text} selected={clozeIndices} onToggle={toggleClozeIndex} />
-                        <input
-                            value={answer}
-                            onChange={(e) => setAnswer(e.target.value)}
-                            placeholder="Translation (optional)"
-                            className="border rounded px-3 py-2"
-                        />
+                        <input value={answer} onChange={(e) => setAnswer(e.target.value)} placeholder="Translation (optional)" className="border rounded px-3 py-2" />
                     </>
                 ) : (
-                    <input
-                        value={answer}
-                        onChange={(e) => setAnswer(e.target.value)}
-                        placeholder="Answer / translation"
-                        className="border rounded px-3 py-2"
-                    />
+                    <input value={answer} onChange={(e) => setAnswer(e.target.value)} placeholder="Answer / translation" className="border rounded px-3 py-2" />
                 )}
 
-                <TagInput tags={tags} onChange={setTags} suggestions={allTags} />
+                <TagInput tags={tags} onChange={setTags} suggestions={allTags} placeholder="Add tags..." />
+
+                <AudioRecorder existingUrl={existingAudioUrl} onChange={setAudioAction} />
 
                 <div className="flex justify-end gap-2 mt-2">
                     <button type="button" onClick={onClose} className="px-3 py-1.5 text-gray-500">

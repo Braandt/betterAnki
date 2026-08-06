@@ -1,119 +1,139 @@
 // context/AppContext.jsx
 import { createContext, useContext, useState, useEffect } from 'react';
-import { createWord, toWordDict } from '../data/wordsStore';
-import { createPhrase } from '../data/phrasesStore';
-import {
-    loadDirHandle,
-    verifyPermission,
-    pickDirectory,
-    readJsonFile,
-    writeJsonFile,
-    isFileSystemAccessSupported,
-} from '../lib/fileSystemStore';
-
-const WORDS_FILE = 'words.json';
-const PHRASES_FILE = 'phrases.json';
+import { supabase } from '../lib/supabaseClient';
+import { phraseFromDb, phraseToDb, wordFromDb, wordToDb } from '../lib/mappers';
 
 const AppContext = createContext(null);
 
 export function AppProvider({ children }) {
-    const [dirHandle, setDirHandle] = useState(null);
-    // 'checking' | 'unsupported' | 'disconnected' | 'connected'
-    const [status, setStatus] = useState('checking');
+    const [session, setSession] = useState(undefined); // undefined = checking, null = logged out
     const [words, setWords] = useState([]);
     const [phrases, setPhrases] = useState([]);
+    const [loading, setLoading] = useState(true);
 
-    // On load: try to silently reconnect to a previously granted folder
     useEffect(() => {
-        if (!isFileSystemAccessSupported()) {
-            setStatus('unsupported');
-            return;
-        }
-        (async () => {
-            const saved = await loadDirHandle();
-            if (saved && (await verifyPermission(saved, 'readwrite'))) {
-                await loadFromDir(saved);
-            } else {
-                setStatus('disconnected');
-            }
-        })();
+        supabase.auth.getSession().then(({ data }) => setSession(data.session));
+        const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
+            setSession(newSession);
+        });
+        return () => sub.subscription.unsubscribe();
     }, []);
 
-    async function loadFromDir(handle) {
-        const [w, p] = await Promise.all([
-            readJsonFile(handle, WORDS_FILE),
-            readJsonFile(handle, PHRASES_FILE),
-        ]);
-        setWords(w);
-        setPhrases(p);
-        setDirHandle(handle);
-        setStatus('connected');
-    }
+    useEffect(() => {
+        if (!session) return;
+        (async () => {
+            setLoading(true);
+            const [{ data: w }, { data: p }] = await Promise.all([
+                supabase.from('words').select('*').order('created_at'),
+                supabase.from('phrases').select('*').order('created_at'),
+            ]);
+            setWords((w || []).map(wordFromDb));
+            setPhrases((p || []).map(phraseFromDb));
+            setLoading(false);
+        })();
+    }, [session]);
 
-    // Must be called from a user gesture (button click) — browser requirement
-    async function connectFolder() {
-        const handle = await pickDirectory();
-        await loadFromDir(handle);
-    }
-
-    function persistWords(next) {
-        setWords(next);
-        if (dirHandle) writeJsonFile(dirHandle, WORDS_FILE, next);
-    }
-
-    function persistPhrases(next) {
-        setPhrases(next);
-        if (dirHandle) writeJsonFile(dirHandle, PHRASES_FILE, next);
-    }
-
-    function addWord({ text, definition, notes }) {
-        const word = createWord({ text, definition, notes });
-        persistWords([...words, word]);
+    async function addWord({ text, definition, notes = '' }) {
+        const { data, error } = await supabase
+            .from('words')
+            .insert(wordToDb({ text: text.toLowerCase().trim(), definition, notes }))
+            .select()
+            .single();
+        if (error) throw error;
+        const word = wordFromDb(data);
+        setWords((prev) => [...prev, word]);
         return word;
     }
 
-    function updateWord(id, updates) {
-        persistWords(words.map((w) => (w.id === id ? { ...w, ...updates } : w)));
+    async function updateWord(id, updates) {
+        const current = words.find((w) => w.id === id);
+        const merged = { ...current, ...updates };
+        const { error } = await supabase.from('words').update(wordToDb(merged)).eq('id', id);
+        if (error) throw error;
+        setWords((prev) => prev.map((w) => (w.id === id ? merged : w)));
     }
 
-    function deleteWord(id) {
-        persistWords(words.filter((w) => w.id !== id));
+    async function deleteWord(id) {
+        const { error } = await supabase.from('words').delete().eq('id', id);
+        if (error) throw error;
+        setWords((prev) => prev.filter((w) => w.id !== id));
     }
 
-    function addPhrase({ text, answer, tags, type }) {
-        const phrase = createPhrase({ text, answer, tags, type });
-        persistPhrases([...phrases, phrase]);
-        return phrase;
-    }
-
-    function updatePhrase(id, updates) {
-        persistPhrases(phrases.map((p) => (p.id === id ? { ...p, ...updates } : p)));
-    }
-
-    function deletePhrase(id) {
-        persistPhrases(phrases.filter((p) => p.id !== id));
-    }
-
-    function importWords(newWords) {
-        persistWords(newWords);
-    }
-
-    function importPhrases(newPhrases) {
-        persistPhrases(newPhrases);
-    }
-
-    function addPhrase({ text, answer, tags, type, clozeIndices }) {
-        const phrase = createPhrase({ text, answer, tags, type, clozeIndices });
+    async function addPhrase({ id, text, answer = '', tags = [], type = 'flip', clozeIndices = [], hasAudio = false }) {
+        const base = {
+            text,
+            answer,
+            tags,
+            type,
+            clozeIndices,
+            hasAudio,
+            srs: { interval: 0, ease: 2.5, due: Date.now(), reps: 0 },
+        };
+        const insertPayload = { ...phraseToDb(base), ...(id ? { id } : {}) };
+        const { data, error } = await supabase.from('phrases').insert(insertPayload).select().single();
+        if (error) throw error;
+        const phrase = phraseFromDb(data);
         setPhrases((prev) => [...prev, phrase]);
         return phrase;
     }
 
+    async function updatePhrase(id, updates) {
+        const current = phrases.find((p) => p.id === id);
+        const merged = { ...current, ...updates };
+        const { error } = await supabase.from('phrases').update(phraseToDb(merged)).eq('id', id);
+        if (error) throw error;
+        setPhrases((prev) => prev.map((p) => (p.id === id ? merged : p)));
+    }
+
+    async function deletePhrase(id) {
+        await supabase.storage.from('audio').remove([`${id}.webm`]); // ignore if it doesn't exist
+        const { error } = await supabase.from('phrases').delete().eq('id', id);
+        if (error) throw error;
+        setPhrases((prev) => prev.filter((p) => p.id !== id));
+    }
+
+    async function saveAudio(phraseId, blob) {
+        const { error } = await supabase.storage
+            .from('audio')
+            .upload(`${phraseId}.webm`, blob, { upsert: true, contentType: 'audio/webm' });
+        if (error) throw error;
+    }
+
+    async function removeAudio(phraseId) {
+        await supabase.storage.from('audio').remove([`${phraseId}.webm`]);
+    }
+
+    async function getAudioUrl(phraseId) {
+        const { data, error } = await supabase.storage
+            .from('audio')
+            .createSignedUrl(`${phraseId}.webm`, 60 * 60); // 1 hour link
+        if (error) return null;
+        return data.signedUrl;
+    }
+
+    function importWords(newWords) {
+        // Bulk replace: wipe and re-insert — simplest for occasional manual imports
+        (async () => {
+            await supabase.from('words').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+            const { data } = await supabase.from('words').insert(newWords.map(wordToDb)).select();
+            setWords((data || []).map(wordFromDb));
+        })();
+    }
+
+    function importPhrases(newPhrases) {
+        (async () => {
+            await supabase.from('phrases').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+            const { data } = await supabase.from('phrases').insert(newPhrases.map(phraseToDb)).select();
+            setPhrases((data || []).map(phraseFromDb));
+        })();
+    }
+
     const value = {
-        status,
-        connectFolder,
+        session,
+        loading,
         words,
         phrases,
-        wordDict: toWordDict(words),
+        wordDict: Object.fromEntries(words.map((w) => [w.text, w])),
         addWord,
         updateWord,
         deleteWord,
@@ -122,6 +142,9 @@ export function AppProvider({ children }) {
         deletePhrase,
         importWords,
         importPhrases,
+        saveAudio,
+        removeAudio,
+        getAudioUrl,
     };
 
     return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

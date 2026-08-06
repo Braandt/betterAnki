@@ -1,5 +1,5 @@
 // features/review/ReviewScreen.jsx
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import ClickableText from '../words/ClickableText';
 import InputAnswer from './InputAnswer';
 import AnswerDiff from './AnswerDiff';
@@ -7,11 +7,26 @@ import ClozeCard from './ClozeCard';
 import ClozeResult from './ClozeResult';
 import PhraseModal from '../phrases/PhraseModal';
 import { isDue, schedule, DEFAULT_SRS } from '../../lib/srs';
+import { phraseContainsWord } from '../../lib/phraseWords';
+import { useApp } from '../../context/AppContext';
 
-export default function ReviewScreen({ phrases, onGrade, filterTags = [], includeAll = false, onExit }) {
+export default function ReviewScreen({
+    phrases,
+    onGrade,
+    filterTags = [],
+    filterWords = [],
+    includeAll = false,
+    onExit,
+    onPracticeWord,
+}) {
     const [queueIds, setQueueIds] = useState(() =>
         phrases
-            .filter((p) => (includeAll || isDue(p)) && filterTags.every((t) => (p.tags || []).includes(t)))
+            .filter((p) => {
+                const dueOk = includeAll || isDue(p);
+                const tagsOk = filterTags.every((t) => (p.tags || []).includes(t));
+                const wordsOk = filterWords.length === 0 || filterWords.some((w) => phraseContainsWord(p, w));
+                return dueOk && tagsOk && wordsOk;
+            })
             .sort((a, b) => (a.srs?.due ?? 0) - (b.srs?.due ?? 0))
             .map((p) => p.id)
     );
@@ -48,6 +63,39 @@ export default function ReviewScreen({ phrases, onGrade, filterTags = [], includ
 
     const handleInputSubmit = useCallback((value) => setUserAnswer(value), []);
     const handleClozeSubmit = useCallback((results) => setClozeResults(results), []);
+
+    const { getAudioUrl } = useApp();
+    const currentAudioRef = useRef(null);
+
+    useEffect(() => {
+        let cancelled = false;
+        let objectUrl = null;
+
+        async function playIfAvailable() {
+            if (!current?.hasAudio) return;
+            const url = await getAudioUrl(current.id);
+            if (url && !cancelled) {
+                objectUrl = url;
+                const audio = new Audio(url);
+                currentAudioRef.current = audio;
+                audio.play().catch(() => {
+                    // Autoplay can be blocked by the browser in rare cases — the
+                    // manual replay button below still lets you hear it.
+                });
+            }
+        }
+        playIfAvailable();
+
+        return () => {
+            cancelled = true;
+            currentAudioRef.current?.pause();
+            if (objectUrl) URL.revokeObjectURL(objectUrl);
+        };
+    }, [current?.id]);
+
+    function replayAudio() {
+        currentAudioRef.current?.play().catch(() => { });
+    }
 
     useEffect(() => {
         function handleKeyDown(e) {
@@ -124,7 +172,12 @@ export default function ReviewScreen({ phrases, onGrade, filterTags = [], includ
                 )
             ) : (
                 <>
-                    <ClickableText text={current.text} />
+                    <ClickableText text={current.text} onPracticeWord={onPracticeWord} />
+                    {current.hasAudio && (
+                        <button onClick={replayAudio} className="text-sm text-blue-500 hover:text-blue-700" title="Replay audio">
+                            🔊 Replay
+                        </button>
+                    )}
                     {cardType === 'input' ? (
                         userAnswer === null ? (
                             <InputAnswer phraseId={current.id} onSubmitted={handleInputSubmit} />
