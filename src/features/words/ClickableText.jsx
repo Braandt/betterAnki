@@ -36,7 +36,10 @@ export default function ClickableText({ text, onPracticeWord }) {
                                 }`}
                             onMouseEnter={() => setHoveredKey(token.key)}
                             onMouseLeave={() => setHoveredKey(null)}
-                            onClick={() => setEditingKey(token.key)}
+                            onClick={(e) => {
+                                e.stopPropagation(); // don't also trigger the card's tap-to-reveal
+                                setEditingKey(token.key);
+                            }}
                         >
                             {token.text}
 

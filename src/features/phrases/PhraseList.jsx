@@ -1,17 +1,20 @@
 // features/phrases/PhraseList.jsx
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { getAllTags } from '../../lib/tags';
 import TagInput from '../../components/TagInput';
+import AudioRecorder from '../../components/AudioRecorder';
 
 export default function PhraseList() {
-    const { phrases, updatePhrase, deletePhrase } = useApp();
+    const { phrases, updatePhrase, deletePhrase, saveAudio, removeAudio, getAudioUrl } = useApp();
     const [search, setSearch] = useState('');
     const [activeTags, setActiveTags] = useState([]);
     const [editingId, setEditingId] = useState(null);
     const [draftText, setDraftText] = useState('');
     const [draftAnswer, setDraftAnswer] = useState('');
     const [draftTags, setDraftTags] = useState([]);
+    const [existingAudioUrl, setExistingAudioUrl] = useState(null);
+    const [audioAction, setAudioAction] = useState(null); // null | {type:'recorded', blob} | {type:'deleted'}
 
     const allTags = getAllTags(phrases);
 
@@ -28,16 +31,39 @@ export default function PhraseList() {
         setActiveTags((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]));
     }
 
-    function startEdit(phrase) {
+    async function startEdit(phrase) {
         setEditingId(phrase.id);
         setDraftText(phrase.text);
         setDraftAnswer(phrase.answer);
         setDraftTags(phrase.tags ?? []);
+        setAudioAction(null);
+        setExistingAudioUrl(null); // clear immediately — same reasoning as PhraseModal
+
+        if (phrase.hasAudio) {
+            const url = await getAudioUrl(phrase.id);
+            setExistingAudioUrl(url); // if you clicked Edit on a different phrase mid-fetch, this could still land late —
+            // acceptable risk here since only one row is ever in edit mode at a time
+        }
     }
 
-    function saveEdit(id) {
+    async function saveEdit(phrase) {
         if (!draftText.trim() || !draftAnswer.trim()) return;
-        updatePhrase(id, { text: draftText.trim(), answer: draftAnswer.trim(), tags: draftTags });
+
+        let hasAudio = phrase.hasAudio ?? false;
+        if (audioAction?.type === 'recorded') {
+            await saveAudio(phrase.id, audioAction.blob);
+            hasAudio = true;
+        } else if (audioAction?.type === 'deleted') {
+            await removeAudio(phrase.id);
+            hasAudio = false;
+        }
+
+        updatePhrase(phrase.id, {
+            text: draftText.trim(),
+            answer: draftAnswer.trim(),
+            tags: draftTags,
+            hasAudio,
+        });
         setEditingId(null);
     }
 
@@ -86,11 +112,12 @@ export default function PhraseList() {
                                     className="border rounded px-2 py-1"
                                 />
                                 <TagInput tags={draftTags} onChange={setDraftTags} suggestions={allTags} />
+                                <AudioRecorder existingUrl={existingAudioUrl} onChange={setAudioAction} />
                                 <div className="flex gap-2 justify-end">
                                     <button onClick={() => setEditingId(null)} className="text-sm text-gray-500 px-2">
                                         Cancel
                                     </button>
-                                    <button onClick={() => saveEdit(phrase.id)} className="text-sm bg-blue-600 text-white rounded px-3 py-1">
+                                    <button onClick={() => saveEdit(phrase)} className="text-sm bg-blue-600 text-white rounded px-3 py-1">
                                         Save
                                     </button>
                                 </div>
@@ -103,17 +130,14 @@ export default function PhraseList() {
                                         <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">
                                             {phrase.type === 'input' ? 'type answer' : phrase.type === 'cloze' ? 'cloze' : 'flip'}
                                         </span>
+                                        {phrase.hasAudio && <span className="text-xs text-gray-400">🎤</span>}
+                                        {phrase.tags?.map((tag) => (
+                                            <span key={tag} className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full">
+                                                {tag}
+                                            </span>
+                                        ))}
                                     </div>
                                     <p className="text-sm text-gray-500">{phrase.answer}</p>
-                                    {phrase.tags?.length > 0 && (
-                                        <div className="flex flex-wrap gap-1 mt-1.5">
-                                            {phrase.tags.map((tag) => (
-                                                <span key={tag} className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full">
-                                                    {tag}
-                                                </span>
-                                            ))}
-                                        </div>
-                                    )}
                                 </div>
                                 <div className="flex gap-2 shrink-0">
                                     <button onClick={() => startEdit(phrase)} className="text-sm text-blue-600">

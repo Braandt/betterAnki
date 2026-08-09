@@ -49,7 +49,6 @@ export default function PhraseModal({ open, onClose, existingPhrase = null }) {
 
     useEffect(() => {
         if (!open) return;
-
         const id = existingPhrase?.id ?? crypto.randomUUID();
         setPhraseId(id);
         setText(existingPhrase?.text ?? '');
@@ -58,11 +57,14 @@ export default function PhraseModal({ open, onClose, existingPhrase = null }) {
         setTags(existingPhrase?.tags ?? []);
         setClozeIndices(existingPhrase?.clozeIndices ?? []);
         setAudioAction(null);
+        setExistingAudioUrl(null); // clear immediately — don't show a stale phrase's audio while fetching
 
         if (existingPhrase?.hasAudio) {
-            getAudioUrl(existingPhrase.id).then(setExistingAudioUrl);
-        } else {
-            setExistingAudioUrl(null);
+            let cancelled = false;
+            getAudioUrl(existingPhrase.id).then((url) => {
+                if (!cancelled) setExistingAudioUrl(url);
+            });
+            return () => { cancelled = true; }; // guard against a fast switch landing the wrong URL
         }
     }, [open, existingPhrase]);
 
