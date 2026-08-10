@@ -34,39 +34,43 @@ function ClozeWordPicker({ text, selected, onToggle }) {
     );
 }
 
-export default function PhraseModal({ open, onClose, existingPhrase = null }) {
+// existingPhrase: editing this exact phrase (updates it on save)
+// duplicateFrom: pre-fill fields from this phrase, but save as a brand-new phrase
+export default function PhraseModal({ open, onClose, existingPhrase = null, duplicateFrom = null }) {
     const { addPhrase, updatePhrase, phrases, saveAudio, removeAudio, getAudioUrl } = useApp();
     const [phraseId, setPhraseId] = useState(null);
     const [text, setText] = useState('');
     const [answer, setAnswer] = useState('');
-    const [type, setType] = useState('flip');
+    const [type, setType] = useState('cloze');
     const [tags, setTags] = useState([]);
     const [clozeIndices, setClozeIndices] = useState([]);
+    const [showTranslationUpfront, setShowTranslationUpfront] = useState(true);
     const [existingAudioUrl, setExistingAudioUrl] = useState(null);
-    const [audioAction, setAudioAction] = useState(null); // null | {type:'recorded', blob} | {type:'deleted'}
+    const [audioAction, setAudioAction] = useState(null);
 
     const allTags = getAllTags(phrases);
+    const source = existingPhrase ?? duplicateFrom; // whichever one supplies the pre-fill data
 
     useEffect(() => {
         if (!open) return;
+
         const id = existingPhrase?.id ?? crypto.randomUUID();
         setPhraseId(id);
-        setText(existingPhrase?.text ?? '');
-        setAnswer(existingPhrase?.answer ?? '');
-        setType(existingPhrase?.type ?? 'flip');
-        setTags(existingPhrase?.tags ?? []);
-        setClozeIndices(existingPhrase?.clozeIndices ?? []);
+        setText(source?.text ?? '');
+        setAnswer(source?.answer ?? '');
+        setType(source?.type ?? 'cloze');
+        setTags(source?.tags ?? []);
+        setClozeIndices(source?.clozeIndices ?? []);
+        setShowTranslationUpfront(source?.showTranslationUpfront ?? true);
         setAudioAction(null);
-        setExistingAudioUrl(null); // clear immediately — don't show a stale phrase's audio while fetching
+        setExistingAudioUrl(null);
 
+        // Only preload existing audio when actually editing — a duplicate starts
+        // with no audio, since re-using someone else's recording as-is rarely makes sense.
         if (existingPhrase?.hasAudio) {
-            let cancelled = false;
-            getAudioUrl(existingPhrase.id).then((url) => {
-                if (!cancelled) setExistingAudioUrl(url);
-            });
-            return () => { cancelled = true; }; // guard against a fast switch landing the wrong URL
+            getAudioUrl(existingPhrase.id).then(setExistingAudioUrl);
         }
-    }, [open, existingPhrase]);
+    }, [open, existingPhrase, duplicateFrom]);
 
     function handleTextChange(e) {
         setText(e.target.value);
@@ -99,6 +103,7 @@ export default function PhraseModal({ open, onClose, existingPhrase = null }) {
             tags,
             clozeIndices: type === 'cloze' ? clozeIndices : [],
             hasAudio,
+            showTranslationUpfront: type === 'cloze' ? showTranslationUpfront : false,
         };
 
         if (existingPhrase) {
@@ -112,7 +117,9 @@ export default function PhraseModal({ open, onClose, existingPhrase = null }) {
     return (
         <Modal open={open} onClose={onClose} onConfirm={handleSubmit}>
             <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-                <h2 className="text-lg font-semibold">{existingPhrase ? 'Edit phrase' : 'Add phrase'}</h2>
+                <h2 className="text-lg font-semibold">
+                    {existingPhrase ? 'Edit phrase' : duplicateFrom ? 'New phrase (from duplicate)' : 'Add phrase'}
+                </h2>
 
                 <div className="flex gap-2">
                     <button type="button" onClick={() => setType('flip')} className={`flex-1 px-3 py-2 rounded text-sm font-medium border ${type === 'flip' ? 'bg-blue-600 text-white border-blue-600' : 'text-gray-600 border-gray-300'}`}>
@@ -138,6 +145,14 @@ export default function PhraseModal({ open, onClose, existingPhrase = null }) {
                     <>
                         <ClozeWordPicker text={text} selected={clozeIndices} onToggle={toggleClozeIndex} />
                         <input value={answer} onChange={(e) => setAnswer(e.target.value)} placeholder="Translation (optional)" className="border rounded px-3 py-2" />
+                        <label className="flex items-center gap-2 text-sm text-gray-600">
+                            <input
+                                type="checkbox"
+                                checked={showTranslationUpfront}
+                                onChange={(e) => setShowTranslationUpfront(e.target.checked)}
+                            />
+                            Show hints before answering (word definition + translation)
+                        </label>
                     </>
                 ) : (
                     <input value={answer} onChange={(e) => setAnswer(e.target.value)} placeholder="Answer / translation" className="border rounded px-3 py-2" />

@@ -7,6 +7,7 @@ export function createPhrase({
     type = 'flip',
     clozeIndices = [],
     hasAudio = false,
+    showTranslationUpfront = true, // cloze-only: show the translation above the blank before answering
 }) {
     return {
         id,
@@ -15,7 +16,8 @@ export function createPhrase({
         tags,
         type,
         clozeIndices,
-        hasAudio, // whether an audio/<id>.webm recording exists
+        hasAudio,
+        showTranslationUpfront,
         srs: { interval: 0, ease: 2.5, due: Date.now(), reps: 0 },
         createdAt: Date.now(),
     };

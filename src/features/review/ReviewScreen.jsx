@@ -38,6 +38,7 @@ export default function ReviewScreen({
     const [clozeResults, setClozeResults] = useState(null);
     const [autoGrade, setAutoGrade] = useState(null); // grade computed automatically from cloze correctness
     const [editingPhrase, setEditingPhrase] = useState(false);
+    const [duplicatingPhrase, setDuplicatingPhrase] = useState(false);
     const currentAudioRef = useRef(null);
 
     const current = phrases.find((p) => p.id === queueIds[0]) ?? null;
@@ -51,7 +52,11 @@ export default function ReviewScreen({
     const handleGrade = useCallback(
         (grade) => {
             if (!current) return;
-            const newSrs = schedule(current.srs ?? DEFAULT_SRS, grade);
+            const prevSrs = current.srs ?? DEFAULT_SRS;
+            const newSrs = schedule(prevSrs, grade);
+
+            setHistory((h) => [...h, { queueIdsBefore: queueIds, phrase: current, prevSrs }]);
+
             onGrade?.(current, newSrs);
 
             setQueueIds((ids) => {
@@ -63,7 +68,7 @@ export default function ReviewScreen({
             setClozeResults(null);
             setAutoGrade(null);
         },
-        [current, onGrade]
+        [current, onGrade, queueIds]
     );
 
     const handleInputSubmit = useCallback((value) => setUserAnswer(value), []);
@@ -74,13 +79,30 @@ export default function ReviewScreen({
         setAutoGrade(allCorrect ? 'easy' : 'difficult');
     }, []);
 
+    const [history, setHistory] = useState([]); // stack of { queueIdsBefore, phrase, prevSrs }
+    const goBack = useCallback(() => {
+        setHistory((h) => {
+            if (h.length === 0) return h;
+            const last = h[h.length - 1];
+            onGrade?.(last.phrase, last.prevSrs); // revert the SRS change
+            setQueueIds(last.queueIdsBefore);
+            setRevealed(false);
+            setUserAnswer(null);
+            setClozeResults(null);
+            setAutoGrade(null);
+            return h.slice(0, -1);
+        });
+    }, [onGrade]);
+
     // Audio autoplay — unchanged
     useEffect(() => {
         let cancelled = false;
         let objectUrl = null;
 
         async function playIfAvailable() {
+            if (cardType === 'cloze' || cardType === 'input') return;
             if (!current?.hasAudio) return;
+
             const url = await getAudioUrl(current.id);
             if (url && !cancelled) {
                 objectUrl = url;
@@ -96,10 +118,20 @@ export default function ReviewScreen({
             currentAudioRef.current?.pause();
             if (objectUrl) URL.revokeObjectURL(objectUrl);
         };
-    }, [current?.id]);
+    }, [current?.id], cardType);
 
-    function replayAudio() {
-        currentAudioRef.current?.play().catch(() => { });
+    async function replayAudio() {
+        if (!current?.hasAudio) return;
+        if (currentAudioRef.current && cardType !== 'cloze' && cardType !== 'input') {
+            currentAudioRef.play().catch(() => { })
+            return
+        }
+        const url = await getAudioUrl(current.id)
+        if (url) {
+            const audio = new Audio(url)
+            currentAudioRef.current = audio
+            audio.play().catch(() => { })
+        }
     }
 
     function handleCardTap() {
@@ -124,6 +156,18 @@ export default function ReviewScreen({
                 return;
             }
 
+            if (e.key === 'b' || e.key === 'B') {
+                e.preventDefault();
+                goBack();
+                return;
+            }
+
+            if (e.key === 'd' || e.key === 'd') {
+                e.preventDefault();
+                setDuplicatingPhrase(true);
+                return;
+            }
+
             if (e.code === 'Space') {
                 e.preventDefault();
                 if (cardType === 'flip') {
@@ -133,22 +177,22 @@ export default function ReviewScreen({
                         handleGrade('easy');
                     }
                 } else if (cardType === 'cloze' && isChecked) {
-                    handleGrade(autoGrade); // continue using the auto-computed grade
+                    handleGrade(autoGrade);
                 } else if (isChecked) {
                     handleGrade('easy');
                 }
                 return;
             }
 
-            // 1/2 still work as an override — for cloze cards this overrides autoGrade
             if (isChecked) {
                 if (e.key === '1') { e.preventDefault(); handleGrade('difficult'); }
                 if (e.key === '2') { e.preventDefault(); handleGrade('easy'); }
             }
+
         }
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [cardType, revealed, isChecked, autoGrade, handleGrade]);
+    }, [cardType, revealed, isChecked, autoGrade, handleGrade, goBack]);
 
     if (!current) {
         return (
@@ -201,7 +245,10 @@ export default function ReviewScreen({
                     </div>
                 )
             ) : (
-                <div onClick={cardType === 'flip' ? handleCardTap : undefined} className={cardType === 'flip' ? 'cursor-pointer select-none' : ''}>
+                <div
+                    onClick={cardType === 'flip' ? handleCardTap : undefined}
+                    className={cardType === 'flip' ? 'cursor-pointer select-none' : '' + 'flex flex-col items-center'}
+                >
                     <ClickableText text={current.text} onPracticeWord={onPracticeWord} />
                     {cardType === 'input' ? (
                         userAnswer === null ? (
@@ -219,7 +266,10 @@ export default function ReviewScreen({
             )}
 
             {current.hasAudio && (
-                <button onClick={replayAudio} className="text-sm text-blue-500 hover:text-blue-700" title="Replay audio">
+                <button
+                    onClick={replayAudio}
+                    className="text-sm text-blue-500 hover:text-blue-700" title="Replay audio"
+                >
                     🔊 Replay
                 </button>
             )}
@@ -235,9 +285,17 @@ export default function ReviewScreen({
                 </div>
             )}
 
-            <p className="text-xs text-gray-300">{queueIds.length - 1} more due · press "e" to edit this phrase</p>
+            <p className="fixed bottom-3 left-0 right-0 text-center text-xs text-gray-500 px-4">
+                {queueIds.length - 1} more due · "e" to edit · "k" to duplicate
+                {history.length > 0 && ' · "b" to go back'}
+            </p>
 
             <PhraseModal open={editingPhrase} existingPhrase={current} onClose={() => setEditingPhrase(false)} />
+            <PhraseModal
+                open={duplicatingPhrase}
+                duplicateFrom={current}
+                onClose={() => setDuplicatingPhrase(false)}
+            />
         </div>
     );
 }

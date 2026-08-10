@@ -5,16 +5,23 @@ import { getAllTags } from '../../lib/tags';
 import TagInput from '../../components/TagInput';
 import AudioRecorder from '../../components/AudioRecorder';
 
+const TYPE_LABELS = {
+    flip: 'Flip',
+    input: 'Type answer',
+    cloze: 'Cloze',
+};
+
 export default function PhraseList() {
     const { phrases, updatePhrase, deletePhrase, saveAudio, removeAudio, getAudioUrl } = useApp();
     const [search, setSearch] = useState('');
     const [activeTags, setActiveTags] = useState([]);
+    const [activeTypes, setActiveTypes] = useState([]);
     const [editingId, setEditingId] = useState(null);
     const [draftText, setDraftText] = useState('');
     const [draftAnswer, setDraftAnswer] = useState('');
     const [draftTags, setDraftTags] = useState([]);
     const [existingAudioUrl, setExistingAudioUrl] = useState(null);
-    const [audioAction, setAudioAction] = useState(null); // null | {type:'recorded', blob} | {type:'deleted'}
+    const [audioAction, setAudioAction] = useState(null);
 
     const allTags = getAllTags(phrases);
 
@@ -23,12 +30,17 @@ export default function PhraseList() {
         return phrases.filter((p) => {
             const matchesSearch = !q || p.text.toLowerCase().includes(q) || p.answer.toLowerCase().includes(q);
             const matchesTags = activeTags.every((t) => (p.tags || []).includes(t));
-            return matchesSearch && matchesTags;
+            const matchesType = activeTypes.length === 0 || activeTypes.includes(p.type || 'flip');
+            return matchesSearch && matchesTags && matchesType;
         });
-    }, [phrases, search, activeTags]);
+    }, [phrases, search, activeTags, activeTypes]);
 
     function toggleTag(tag) {
         setActiveTags((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]));
+    }
+
+    function toggleType(type) {
+        setActiveTypes((prev) => (prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type]));
     }
 
     async function startEdit(phrase) {
@@ -37,12 +49,9 @@ export default function PhraseList() {
         setDraftAnswer(phrase.answer);
         setDraftTags(phrase.tags ?? []);
         setAudioAction(null);
-        setExistingAudioUrl(null); // clear immediately — same reasoning as PhraseModal
-
+        setExistingAudioUrl(null);
         if (phrase.hasAudio) {
-            const url = await getAudioUrl(phrase.id);
-            setExistingAudioUrl(url); // if you clicked Edit on a different phrase mid-fetch, this could still land late —
-            // acceptable risk here since only one row is ever in edit mode at a time
+            setExistingAudioUrl(await getAudioUrl(phrase.id));
         }
     }
 
@@ -75,6 +84,27 @@ export default function PhraseList() {
                 placeholder="Search phrases..."
                 className="border rounded px-3 py-2 w-full mb-3"
             />
+
+            <p className="text-sm text-gray-400 mb-4">
+                {search.trim()
+                    ? `${filtered.length} of ${phrases.length} phrases`
+                    : `${phrases.length} phrase${phrases.length === 1 ? '' : 's'}`}
+            </p>
+
+            <div className="flex flex-wrap gap-1.5 mb-2">
+                {Object.entries(TYPE_LABELS).map(([type, label]) => (
+                    <button
+                        key={type}
+                        onClick={() => toggleType(type)}
+                        className={`text-xs px-2.5 py-1 rounded-full border ${activeTypes.includes(type)
+                            ? 'bg-purple-600 text-white border-purple-600'
+                            : 'text-gray-500 border-gray-300 hover:bg-gray-50'
+                            }`}
+                    >
+                        {label}
+                    </button>
+                ))}
+            </div>
 
             {allTags.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 mb-4">
@@ -128,7 +158,7 @@ export default function PhraseList() {
                                     <div className="flex items-center gap-2 flex-wrap">
                                         <p className="font-medium">{phrase.text}</p>
                                         <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">
-                                            {phrase.type === 'input' ? 'type answer' : phrase.type === 'cloze' ? 'cloze' : 'flip'}
+                                            {TYPE_LABELS[phrase.type] || 'Flip'}
                                         </span>
                                         {phrase.hasAudio && <span className="text-xs text-gray-400">🎤</span>}
                                         {phrase.tags?.map((tag) => (
