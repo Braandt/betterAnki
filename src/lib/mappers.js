@@ -9,6 +9,7 @@ export function phraseFromDb(row) {
         type: row.type,
         clozeIndices: row.cloze_indices || [],
         hasAudio: row.has_audio,
+        showTranslationUpfront: row.show_translation_upfront || false,
         srs: row.srs,
         createdAt: new Date(row.created_at).getTime(),
     };
@@ -22,6 +23,7 @@ export function phraseToDb(phrase) {
         type: phrase.type,
         cloze_indices: phrase.clozeIndices,
         has_audio: phrase.hasAudio,
+        show_translation_upfront: phrase.showTranslationUpfront,
         srs: phrase.srs,
     };
 }

@@ -32,7 +32,7 @@ export default function ClickableText({ text, onPracticeWord }) {
                     return (
                         <span
                             key={i}
-                            className={`relative cursor-pointer hover:bg-yellow-200 rounded px-0.5 ${entry ? 'underline decoration-dotted decoration-gray-400 underline-offset-4' : ''
+                            className={`relative cursor-pointer pb-2 group ${entry ? 'underline decoration-dotted decoration-gray-400 underline-offset-4' : ''
                                 }`}
                             onMouseEnter={() => setHoveredKey(token.key)}
                             onMouseLeave={() => setHoveredKey(null)}
@@ -41,10 +41,12 @@ export default function ClickableText({ text, onPracticeWord }) {
                                 setEditingKey(token.key);
                             }}
                         >
-                            {token.text}
+                            <span className='group-hover:bg-yellow-200 px-0.5 rounded'>
+                                {token.text}
+                            </span>
 
                             {isHovered && (
-                                <span className="absolute left-1/2 -translate-x-1/2 top-full mt-2 z-10 w-max max-w-xs rounded bg-gray-800 text-white text-sm px-3 py-2 shadow-lg text-left flex flex-col gap-1.5">
+                                <span className="absolute left-1/2 -translate-x-1/2 top-full z-10 w-max max-w-xs rounded bg-gray-800 text-white text-sm px-3 py-2 shadow-lg text-left flex flex-col gap-1.5">
                                     {entry ? (
                                         <span className="flex flex-col gap-1">
                                             <span>{entry.definition}</span>

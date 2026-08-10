@@ -286,7 +286,7 @@ export default function ReviewScreen({
             )}
 
             <p className="fixed bottom-3 left-0 right-0 text-center text-xs text-gray-500 px-4">
-                {queueIds.length - 1} more due · "e" to edit · "k" to duplicate
+                {queueIds.length - 1} more due · "e" to edit · "d" to duplicate
                 {history.length > 0 && ' · "b" to go back'}
             </p>
 
