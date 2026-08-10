@@ -42,6 +42,7 @@ function AutoWidthInput({ value, onChange, onKeyDown, inputRef, placeholder, dis
                 autoComplete="off"
                 autoCorrect="off"
                 spellCheck="false"
+                autoCapitalize='none'
             />
         </span>
     );
