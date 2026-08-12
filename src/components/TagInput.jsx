@@ -1,7 +1,7 @@
 // components/TagInput.jsx
 import { useState, useMemo } from 'react';
 
-export default function TagInput({ tags, onChange, suggestions = [], placeholder = 'Add tags...' }) {
+export default function TagInput({ tags, onChange, suggestions = [], placeholder = 'Add tags...', disabled = false }) {
     const [draft, setDraft] = useState('');
 
     const filteredSuggestions = useMemo(() => {
@@ -34,11 +34,11 @@ export default function TagInput({ tags, onChange, suggestions = [], placeholder
     }
 
     return (
-        <div className="border rounded px-2 py-1.5 flex flex-wrap gap-1.5 items-center relative">
+        <div className={`border rounded px-2 py-1.5 flex flex-wrap gap-1.5 items-center relative ${disabled ? 'bg-gray-100 opacity-60' : ''}`}>
             {tags.map((tag) => (
                 <span key={tag} className="flex items-center gap-1 bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded-full">
                     {tag}
-                    <button type="button" onClick={() => removeTag(tag)} className="text-blue-400 hover:text-blue-700">
+                    <button type="button" onClick={() => removeTag(tag)} disabled={disabled} className="text-blue-400 hover:text-blue-700">
                         ×
                     </button>
                 </span>
@@ -48,7 +48,8 @@ export default function TagInput({ tags, onChange, suggestions = [], placeholder
                 onChange={(e) => setDraft(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder={tags.length === 0 ? placeholder : ''}
-                className="flex-1 min-w-25 outline-none text-sm py-0.5"
+                disabled={disabled}
+                className="flex-1 min-w-25 outline-none text-sm py-0.5 bg-transparent"
             />
             {filteredSuggestions.length > 0 && (
                 <div className="absolute left-0 top-full mt-1 w-full bg-white border rounded shadow-lg z-10 text-sm">

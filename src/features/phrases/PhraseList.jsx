@@ -160,7 +160,13 @@ export default function PhraseList() {
                                         <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">
                                             {TYPE_LABELS[phrase.type] || 'Flip'}
                                         </span>
-                                        {phrase.hasAudio && <span className="text-xs text-gray-400">🎤</span>}
+                                        {phrase.hasAudio && <button
+                                            onClick={async () => {
+                                                const audioUrl = await getAudioUrl(phrase.id)
+                                                await new Audio(audioUrl).play()
+                                            }}
+                                            className="text-xs text-gray-400">🎤</button>}
+
                                         {phrase.tags?.map((tag) => (
                                             <span key={tag} className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full">
                                                 {tag}

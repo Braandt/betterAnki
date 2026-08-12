@@ -1,5 +1,6 @@
 // components/Modal.jsx
 import { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 
 export default function Modal({ open, onClose, onConfirm, children }) {
     useEffect(() => {
@@ -8,7 +9,6 @@ export default function Modal({ open, onClose, onConfirm, children }) {
                 onClose();
                 return;
             }
-            // Ctrl+Enter (or Cmd+Enter on Mac) confirms the modal
             if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
                 e.preventDefault();
                 onConfirm?.();
@@ -20,9 +20,9 @@ export default function Modal({ open, onClose, onConfirm, children }) {
 
     if (!open) return null;
 
-    return (
+    return createPortal(
         <div
-            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 text-base"
             onClick={onClose}
         >
             <div
@@ -31,6 +31,7 @@ export default function Modal({ open, onClose, onConfirm, children }) {
             >
                 {children}
             </div>
-        </div>
+        </div>,
+        document.body
     );
 }

@@ -9,6 +9,7 @@ import PhraseModal from '../phrases/PhraseModal';
 import { isDue, schedule, DEFAULT_SRS } from '../../lib/srs';
 import { phraseContainsWord } from '../../lib/phraseWords';
 import { useApp } from '../../context/AppContext';
+import { adjustMastery } from '../../lib/wordMastery';
 
 export default function ReviewScreen({
     phrases,
@@ -19,7 +20,7 @@ export default function ReviewScreen({
     onExit,
     onPracticeWord,
 }) {
-    const { getAudioUrl } = useApp();
+    const { getAudioUrl, wordDict, updateWord } = useApp();
 
     const [queueIds, setQueueIds] = useState(() =>
         phrases
@@ -77,7 +78,16 @@ export default function ReviewScreen({
         setClozeResults(results);
         const allCorrect = results.every((r) => r.isCorrect);
         setAutoGrade(allCorrect ? 'easy' : 'difficult');
-    }, []);
+
+        // Grade each blanked word individually, based on this first attempt —
+        // words without a dictionary entry are silently skipped (nothing to grade).
+        results.forEach((r) => {
+            const word = wordDict[r.key];
+            if (word) {
+                updateWord(word.id, { mastery: adjustMastery(word.mastery, r.isCorrect) });
+            }
+        });
+    }, [wordDict, updateWord]);
 
     const [history, setHistory] = useState([]); // stack of { queueIdsBefore, phrase, prevSrs }
     const goBack = useCallback(() => {
@@ -230,7 +240,7 @@ export default function ReviewScreen({
 
             {cardType === 'cloze' ? (
                 clozeResults === null ? (
-                    <ClozeCard phrase={current} onSubmitted={handleClozeSubmit} />
+                    <ClozeCard phrase={current} onSubmitted={handleClozeSubmit} onPracticeWord={onPracticeWord} />
                 ) : (
                     <div className="flex flex-col items-center gap-3">
                         <ClozeResult phrase={current} results={clozeResults} />

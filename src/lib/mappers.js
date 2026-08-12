@@ -9,7 +9,7 @@ export function phraseFromDb(row) {
         type: row.type,
         clozeIndices: row.cloze_indices || [],
         hasAudio: row.has_audio,
-        showTranslationUpfront: row.show_translation_upfront || false,
+        showTranslationUpfront: row.show_translation_upfront || true,
         srs: row.srs,
         createdAt: new Date(row.created_at).getTime(),
     };
@@ -34,6 +34,7 @@ export function wordFromDb(row) {
         text: row.text,
         definition: row.definition,
         notes: row.notes,
+        mastery: row.mastery || { score: 50, correct: 0, wrong: 0 },
         createdAt: new Date(row.created_at).getTime(),
     };
 }
@@ -43,5 +44,6 @@ export function wordToDb(word) {
         text: word.text,
         definition: word.definition,
         notes: word.notes,
+        mastery: word.mastery,
     };
 }

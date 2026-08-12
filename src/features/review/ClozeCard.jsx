@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from 'react';
 import { tokenize } from '../../lib/tokenize';
 import { checkClozeAnswers } from '../../lib/cloze';
 import { useApp } from '../../context/AppContext';
+import WordSpan from '../words/WordSpan';
 
 const MIN_WIDTH = 60;
 const EXTRA_PADDING = 16;
@@ -48,7 +49,7 @@ function AutoWidthInput({ value, onChange, onKeyDown, inputRef, placeholder, dis
     );
 }
 
-export default function ClozeCard({ phrase, onSubmitted }) {
+export default function ClozeCard({ phrase, onSubmitted, onPracticeWord }) {
     const { wordDict } = useApp();
     const tokens = tokenize(phrase.text);
     const clozeIndices = phrase.clozeIndices || [];
@@ -167,7 +168,14 @@ export default function ClozeCard({ phrase, onSubmitted }) {
             <p className="text-3xl leading-relaxed text-center">
                 {tokens.map((token, i) => {
                     const blankPos = clozeIndices.indexOf(i);
-                    if (blankPos === -1) return <span key={i}>{token.text}</span>;
+
+                    if (blankPos === -1) {
+                        return token.isWord ? (
+                            <WordSpan key={i} token={token} onPracticeWord={onPracticeWord} />
+                        ) : (
+                            <span key={i}>{token.text}</span>
+                        );
+                    }
 
                     if (phase === 'answering') {
                         return (
@@ -181,7 +189,6 @@ export default function ClozeCard({ phrase, onSubmitted }) {
                         );
                     }
 
-                    // correcting phase
                     const isCorrect = corrected[blankPos];
                     return (
                         <AutoWidthInput
