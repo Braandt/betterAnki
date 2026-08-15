@@ -11,6 +11,7 @@ export function phraseFromDb(row) {
         hasAudio: row.has_audio,
         showTranslationUpfront: row.show_translation_upfront || true,
         srs: row.srs,
+        audioExt: row.audio_ext || 'webm',
         createdAt: new Date(row.created_at).getTime(),
     };
 }
@@ -25,6 +26,7 @@ export function phraseToDb(phrase) {
         has_audio: phrase.hasAudio,
         show_translation_upfront: phrase.showTranslationUpfront,
         srs: phrase.srs,
+        audio_ext: phrase.audioExt,
     };
 }
 

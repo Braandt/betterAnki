@@ -1,7 +1,8 @@
-// features/review/ClozeResult.jsx
+import { useApp } from '../../context/AppContext';
 import { tokenize } from '../../lib/tokenize';
 
 export default function ClozeResult({ phrase, results }) {
+    const { wordDict } = useApp();
     const tokens = tokenize(phrase.text);
     const resultMap = Object.fromEntries(results.map((r) => [r.tokenIndex, r]));
     const allCorrect = results.every((r) => r.isCorrect);
@@ -32,6 +33,25 @@ export default function ClozeResult({ phrase, results }) {
                 })}
             </p>
             {phrase.answer && <p className="text-sm text-gray-400 mt-1">{phrase.answer}</p>}
+
+            {tokens.map((token, i) => {
+                const r = resultMap[i]
+
+                if (!r) return null
+
+                const wordHasDefinition = wordDict[r.correctText]
+                if (!wordHasDefinition) {
+                    return (
+                        <button key={i} className='flex text-sm items-center gap-6 bg-blue-200 py-2 px-3 rounded-md my-2'>
+                            <div className='bg-blue-100 py-1 px-2 rounded-sm capitalize font-semibold'>
+                                {r.correctText}
+                            </div>
+                            <div>Add definition</div>
+                        </button>
+                    )
+                }
+
+            })}
         </div>
     );
 }

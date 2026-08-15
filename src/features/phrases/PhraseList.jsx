@@ -50,20 +50,21 @@ export default function PhraseList() {
         setDraftTags(phrase.tags ?? []);
         setAudioAction(null);
         setExistingAudioUrl(null);
-        if (phrase.hasAudio) {
-            setExistingAudioUrl(await getAudioUrl(phrase.id));
+        if (existingPhrase?.hasAudio) {
+            getAudioUrl(existingPhrase.id, existingPhrase.audioExt).then(setExistingAudioUrl);
         }
     }
 
     async function saveEdit(phrase) {
         if (!draftText.trim() || !draftAnswer.trim()) return;
 
-        let hasAudio = phrase.hasAudio ?? false;
+        let hasAudio = existingPhrase?.hasAudio ?? false;
+        let audioExt = existingPhrase?.audioExt ?? 'webm';
         if (audioAction?.type === 'recorded') {
-            await saveAudio(phrase.id, audioAction.blob);
+            audioExt = await saveAudio(phraseId, audioAction.blob, audioAction.mimeType);
             hasAudio = true;
         } else if (audioAction?.type === 'deleted') {
-            await removeAudio(phrase.id);
+            await removeAudio(phraseId, existingPhrase?.audioExt ?? 'webm');
             hasAudio = false;
         }
 

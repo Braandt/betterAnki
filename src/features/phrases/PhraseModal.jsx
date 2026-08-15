@@ -68,7 +68,7 @@ export default function PhraseModal({ open, onClose, existingPhrase = null, dupl
         // Only preload existing audio when actually editing — a duplicate starts
         // with no audio, since re-using someone else's recording as-is rarely makes sense.
         if (existingPhrase?.hasAudio) {
-            getAudioUrl(existingPhrase.id).then(setExistingAudioUrl);
+            getAudioUrl(existingPhrase.id, existingPhrase.audioExt).then(setExistingAudioUrl);
         }
     }, [open, existingPhrase, duplicateFrom]);
 
@@ -88,11 +88,12 @@ export default function PhraseModal({ open, onClose, existingPhrase = null, dupl
         if (type !== 'cloze' && !answer.trim()) return;
 
         let hasAudio = existingPhrase?.hasAudio ?? false;
+        let audioExt = existingPhrase?.audioExt ?? 'webm';
         if (audioAction?.type === 'recorded') {
-            await saveAudio(phraseId, audioAction.blob);
+            audioExt = await saveAudio(phraseId, audioAction.blob, audioAction.mimeType);
             hasAudio = true;
         } else if (audioAction?.type === 'deleted') {
-            await removeAudio(phraseId);
+            await removeAudio(phraseId, existingPhrase?.audioExt ?? 'webm');
             hasAudio = false;
         }
 

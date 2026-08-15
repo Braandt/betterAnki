@@ -1,8 +1,7 @@
 // components/AudioRecorder.jsx
 import { useState, useRef, useEffect } from 'react';
+import { getSupportedMimeType } from '../lib/audioFormat';
 
-// onChange receives { type: 'recorded', blob } or { type: 'deleted' } —
-// parent decides when to actually persist it (on form submit).
 export default function AudioRecorder({ existingUrl, onChange }) {
     const [recording, setRecording] = useState(false);
     const [previewUrl, setPreviewUrl] = useState(existingUrl || null);
@@ -16,22 +15,44 @@ export default function AudioRecorder({ existingUrl, onChange }) {
 
     async function startRecording() {
         setError(null);
+
+        if (!navigator.mediaDevices?.getUserMedia) {
+            setError('This browser doesn\'t support audio recording. Try Chrome or Safari, and make sure you\'re on HTTPS.');
+            return;
+        }
+
+        const mimeType = getSupportedMimeType();
+        if (!mimeType) {
+            setError('No supported audio format found on this device.');
+            return;
+        }
+
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            const recorder = new MediaRecorder(stream);
+            const recorder = new MediaRecorder(stream, { mimeType });
             chunksRef.current = [];
             recorder.ondataavailable = (e) => chunksRef.current.push(e.data);
             recorder.onstop = () => {
-                const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+                const blob = new Blob(chunksRef.current, { type: mimeType });
                 setPreviewUrl(URL.createObjectURL(blob));
-                onChange({ type: 'recorded', blob });
+                onChange({ type: 'recorded', blob, mimeType });
                 stream.getTracks().forEach((t) => t.stop());
             };
             recorder.start();
             mediaRecorderRef.current = recorder;
             setRecording(true);
         } catch (err) {
-            setError('Microphone access denied or unavailable.');
+            // Surface the real reason instead of a generic message — the cause
+            // (denied permission, no mic, insecure context) needs different fixes.
+            if (err.name === 'NotAllowedError') {
+                setError('Microphone access was denied. Check your browser/site permissions.');
+            } else if (err.name === 'NotFoundError') {
+                setError('No microphone found on this device.');
+            } else if (err.name === 'SecurityError') {
+                setError('Recording requires a secure (HTTPS) connection.');
+            } else {
+                setError(`Recording failed: ${err.message || err.name}`);
+            }
         }
     }
 

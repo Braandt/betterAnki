@@ -2,6 +2,7 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { phraseFromDb, phraseToDb, wordFromDb, wordToDb } from '../lib/mappers';
+import { extensionForMimeType } from '../lib/audioFormat';
 
 const AppContext = createContext(null);
 
@@ -92,21 +93,23 @@ export function AppProvider({ children }) {
         setPhrases((prev) => prev.filter((p) => p.id !== id));
     }
 
-    async function saveAudio(phraseId, blob) {
+    async function saveAudio(phraseId, blob, mimeType = 'audio/webm') {
+        const ext = extensionForMimeType(mimeType);
         const { error } = await supabase.storage
             .from('audio')
-            .upload(`${phraseId}.webm`, blob, { upsert: true, contentType: 'audio/webm' });
+            .upload(`${phraseId}.${ext}`, blob, { upsert: true, contentType: mimeType });
         if (error) throw error;
+        return ext; // caller needs this to save on the phrase record
     }
 
-    async function removeAudio(phraseId) {
-        await supabase.storage.from('audio').remove([`${phraseId}.webm`]);
+    async function removeAudio(phraseId, ext = 'webm') {
+        await supabase.storage.from('audio').remove([`${phraseId}.${ext}`]);
     }
 
-    async function getAudioUrl(phraseId) {
+    async function getAudioUrl(phraseId, ext = 'webm') {
         const { data, error } = await supabase.storage
             .from('audio')
-            .createSignedUrl(`${phraseId}.webm`, 60 * 60); // 1 hour link
+            .createSignedUrl(`${phraseId}.${ext}`, 60 * 60);
         if (error) return null;
         return data.signedUrl;
     }

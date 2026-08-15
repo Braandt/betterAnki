@@ -7,17 +7,11 @@ export function createPhrase({
     type = 'flip',
     clozeIndices = [],
     hasAudio = false,
-    showTranslationUpfront = true, // cloze-only: show the translation above the blank before answering
+    audioExt = 'webm',
+    showTranslationUpfront = true,
 }) {
     return {
-        id,
-        text,
-        answer,
-        tags,
-        type,
-        clozeIndices,
-        hasAudio,
-        showTranslationUpfront,
+        id, text, answer, tags, type, clozeIndices, hasAudio, audioExt, showTranslationUpfront,
         srs: { interval: 0, ease: 2.5, due: Date.now(), reps: 0 },
         createdAt: Date.now(),
     };
