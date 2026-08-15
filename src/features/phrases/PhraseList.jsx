@@ -1,5 +1,6 @@
+// features/words/... wait, this is PhraseList.jsx
 // features/phrases/PhraseList.jsx
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
 import { getAllTags } from '../../lib/tags';
 import TagInput from '../../components/TagInput';
@@ -50,21 +51,21 @@ export default function PhraseList() {
         setDraftTags(phrase.tags ?? []);
         setAudioAction(null);
         setExistingAudioUrl(null);
-        if (existingPhrase?.hasAudio) {
-            getAudioUrl(existingPhrase.id, existingPhrase.audioExt).then(setExistingAudioUrl);
+        if (phrase.hasAudio) {
+            setExistingAudioUrl(await getAudioUrl(phrase.id));
         }
     }
 
-    async function saveEdit(phrase) {
+    async function saveEdit(phrase, e) {
+        e?.preventDefault(); // form submit — stop the actual page navigation/reload
         if (!draftText.trim() || !draftAnswer.trim()) return;
 
-        let hasAudio = existingPhrase?.hasAudio ?? false;
-        let audioExt = existingPhrase?.audioExt ?? 'webm';
+        let hasAudio = phrase.hasAudio ?? false;
         if (audioAction?.type === 'recorded') {
-            audioExt = await saveAudio(phraseId, audioAction.blob, audioAction.mimeType);
+            await saveAudio(phrase.id, audioAction.blob);
             hasAudio = true;
         } else if (audioAction?.type === 'deleted') {
-            await removeAudio(phraseId, existingPhrase?.audioExt ?? 'webm');
+            await removeAudio(phrase.id);
             hasAudio = false;
         }
 
@@ -86,20 +87,14 @@ export default function PhraseList() {
                 className="border rounded px-3 py-2 w-full mb-3"
             />
 
-            <p className="text-sm text-gray-400 mb-4">
-                {search.trim()
-                    ? `${filtered.length} of ${phrases.length} phrases`
-                    : `${phrases.length} phrase${phrases.length === 1 ? '' : 's'}`}
-            </p>
-
             <div className="flex flex-wrap gap-1.5 mb-2">
                 {Object.entries(TYPE_LABELS).map(([type, label]) => (
                     <button
                         key={type}
                         onClick={() => toggleType(type)}
                         className={`text-xs px-2.5 py-1 rounded-full border ${activeTypes.includes(type)
-                            ? 'bg-purple-600 text-white border-purple-600'
-                            : 'text-gray-500 border-gray-300 hover:bg-gray-50'
+                                ? 'bg-purple-600 text-white border-purple-600'
+                                : 'text-gray-500 border-gray-300 hover:bg-gray-50'
                             }`}
                     >
                         {label}
@@ -114,8 +109,8 @@ export default function PhraseList() {
                             key={tag}
                             onClick={() => toggleTag(tag)}
                             className={`text-xs px-2.5 py-1 rounded-full border ${activeTags.includes(tag)
-                                ? 'bg-blue-600 text-white border-blue-600'
-                                : 'text-gray-500 border-gray-300 hover:bg-gray-50'
+                                    ? 'bg-blue-600 text-white border-blue-600'
+                                    : 'text-gray-500 border-gray-300 hover:bg-gray-50'
                                 }`}
                         >
                             {tag}
@@ -130,7 +125,7 @@ export default function PhraseList() {
                 {filtered.map((phrase) => (
                     <li key={phrase.id} className="border rounded-lg p-3">
                         {editingId === phrase.id ? (
-                            <div className="flex flex-col gap-2">
+                            <form onSubmit={(e) => saveEdit(phrase, e)} className="flex flex-col gap-2">
                                 <input
                                     autoFocus
                                     value={draftText}
@@ -145,14 +140,14 @@ export default function PhraseList() {
                                 <TagInput tags={draftTags} onChange={setDraftTags} suggestions={allTags} />
                                 <AudioRecorder existingUrl={existingAudioUrl} onChange={setAudioAction} />
                                 <div className="flex gap-2 justify-end">
-                                    <button onClick={() => setEditingId(null)} className="text-sm text-gray-500 px-2">
+                                    <button type="button" onClick={() => setEditingId(null)} className="text-sm text-gray-500 px-2">
                                         Cancel
                                     </button>
-                                    <button onClick={() => saveEdit(phrase)} className="text-sm bg-blue-600 text-white rounded px-3 py-1">
+                                    <button type="submit" className="text-sm bg-blue-600 text-white rounded px-3 py-1">
                                         Save
                                     </button>
                                 </div>
-                            </div>
+                            </form>
                         ) : (
                             <div className="flex justify-between items-start gap-3">
                                 <div>
@@ -161,13 +156,7 @@ export default function PhraseList() {
                                         <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">
                                             {TYPE_LABELS[phrase.type] || 'Flip'}
                                         </span>
-                                        {phrase.hasAudio && <button
-                                            onClick={async () => {
-                                                const audioUrl = await getAudioUrl(phrase.id)
-                                                await new Audio(audioUrl).play()
-                                            }}
-                                            className="text-xs text-gray-400">🎤</button>}
-
+                                        {phrase.hasAudio && <span className="text-xs text-gray-400">🎤</span>}
                                         {phrase.tags?.map((tag) => (
                                             <span key={tag} className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full">
                                                 {tag}
