@@ -1,11 +1,21 @@
-import { useApp } from '../../context/AppContext';
+// features/review/ClozeResult.jsx
+import { useState } from 'react';
 import { tokenize } from '../../lib/tokenize';
+import { useApp } from '../../context/AppContext';
+import WordEditorModal from '../words/WordEditorModal';
 
 export default function ClozeResult({ phrase, results }) {
-    const { wordDict } = useApp();
+    const { wordDict, addWord } = useApp();
+    const [addingKey, setAddingKey] = useState(null);
+
     const tokens = tokenize(phrase.text);
     const resultMap = Object.fromEntries(results.map((r) => [r.tokenIndex, r]));
     const allCorrect = results.every((r) => r.isCorrect);
+
+    // Blanked words that have no dictionary entry — worth prompting for right now,
+    // since the correct word/context is freshest in mind at this exact moment.
+    const undefinedBlankedWords = [...new Set(results.map((r) => r.key))]
+        .filter((key) => !wordDict[key]);
 
     return (
         <div className="flex flex-col items-center gap-2 max-w-2xl">
@@ -34,24 +44,29 @@ export default function ClozeResult({ phrase, results }) {
             </p>
             {phrase.answer && <p className="text-sm text-gray-400 mt-1">{phrase.answer}</p>}
 
-            {tokens.map((token, i) => {
-                const r = resultMap[i]
+            {undefinedBlankedWords.length > 0 && (
+                <div className="mt-2 flex flex-col items-center gap-1.5 border-t pt-3 w-full">
+                    <p className="text-xs text-gray-400">These blanked words have no definition yet:</p>
+                    <div className="flex flex-wrap gap-1.5 justify-center">
+                        {undefinedBlankedWords.map((key) => (
+                            <button
+                                key={key}
+                                onClick={() => setAddingKey(key)}
+                                className="text-xs px-2.5 py-1 rounded-full border border-dashed border-gray-300 text-gray-500 hover:bg-gray-50"
+                            >
+                                + {key}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
 
-                if (!r) return null
-
-                const wordHasDefinition = wordDict[r.correctText]
-                if (!wordHasDefinition) {
-                    return (
-                        <button key={i} className='flex text-sm items-center gap-6 bg-blue-200 py-2 px-3 rounded-md my-2'>
-                            <div className='bg-blue-100 py-1 px-2 rounded-sm capitalize font-semibold'>
-                                {r.correctText}
-                            </div>
-                            <div>Add definition</div>
-                        </button>
-                    )
-                }
-
-            })}
+            <WordEditorModal
+                wordKey={addingKey}
+                existing={null}
+                onSave={({ definition, notes }) => addWord({ text: addingKey, definition, notes })}
+                onClose={() => setAddingKey(null)}
+            />
         </div>
     );
 }
