@@ -246,7 +246,7 @@ export default function ReviewScreen({
                         <ClozeResult phrase={current} results={clozeResults} />
                         <button
                             onClick={() => handleGrade(autoGrade)}
-                            className={`text-sm px-4 py-1.5 rounded ${autoGrade === 'easy' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                            className={`mt-4 text-sm px-4 py-1.5 rounded ${autoGrade === 'easy' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
                                 }`}
                         >
                             Continue
@@ -300,7 +300,12 @@ export default function ReviewScreen({
                 {history.length > 0 && ' · "b" to go back'}
             </p>
 
-            <PhraseModal open={editingPhrase} existingPhrase={current} onClose={() => setEditingPhrase(false)} />
+            <PhraseModal
+                open={editingPhrase}
+                existingPhrase={current}
+                onClose={() => setEditingPhrase(false)}
+            />
+
             <PhraseModal
                 open={duplicatingPhrase}
                 duplicateFrom={current}

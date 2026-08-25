@@ -164,8 +164,8 @@ export default function ClozeCard({ phrase, onSubmitted, onPracticeWord }) {
         : [];
 
     return (
-        <div className="flex flex-col items-center gap-3 max-w-2xl">
-            <p className="text-3xl leading-relaxed text-center">
+        <div className="flex flex-col max-w-2xl">
+            <p className="text-3xl leading-relaxed text-center mb-4">
                 {tokens.map((token, i) => {
                     const blankPos = clozeIndices.indexOf(i);
 
@@ -209,22 +209,24 @@ export default function ClozeCard({ phrase, onSubmitted, onPracticeWord }) {
                 <p className="text-sm text-red-500">Type the correct word(s) to continue</p>
             )}
 
-            {wordHints.length > 0 && (
-                <div className="flex flex-col items-center gap-0.5">
-                    {wordHints.map((hint, i) => (
-                        <p key={i} className="text-sm text-gray-500">
-                            {hint}
-                        </p>
-                    ))}
-                </div>
-            )}
+            <div className='bg-gray-100 rounded-md p-2'>
+                {wordHints.length > 0 && (
+                    <div className="flex flex-col gap-0.5 mb-2">
+                        {wordHints.map((hint, i) => (
+                            <p key={i} className="text-gray-500 font-semibold">
+                                {hint}
+                            </p>
+                        ))}
+                    </div>
+                )}
 
-            {phrase.showTranslationUpfront && phrase.answer && (
-                <p className="text-sm text-gray-400 italic">{phrase.answer}</p>
-            )}
+                {phrase.showTranslationUpfront && phrase.answer && (
+                    <p className="text-gray-800 font-semibold border-t border-gray-300 pt-2 ">{phrase.answer}</p>
+                )}
+            </div>
 
             {phase === 'answering' ? (
-                <button onClick={handleCheck} className="text-sm bg-blue-600 text-white rounded px-4 py-1.5 mt-1">
+                <button onClick={handleCheck} className="text-sm max-w-fit mx-auto bg-blue-600 text-white rounded px-4 py-1.5 mt-3">
                     Check
                 </button>
             ) : (

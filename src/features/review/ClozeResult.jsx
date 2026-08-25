@@ -18,8 +18,8 @@ export default function ClozeResult({ phrase, results }) {
         .filter((key) => !wordDict[key]);
 
     return (
-        <div className="flex flex-col items-center gap-2 max-w-2xl">
-            <p className={allCorrect ? 'text-green-600 font-medium' : 'text-red-500 font-medium'}>
+        <div className="flex flex-col gap-2 max-w-2xl">
+            <p className={allCorrect ? 'text-white bg-green-600 max-w-fit py-0.5 px-2 rounded-full font-medium' : 'text-white bg-red-500 max-w-fit py-0.5 px-2 rounded-full font-medium'}>
                 {allCorrect ? 'Correct!' : 'Not quite'}
             </p>
             <p className="text-2xl leading-relaxed text-center">
@@ -42,7 +42,7 @@ export default function ClozeResult({ phrase, results }) {
                     );
                 })}
             </p>
-            {phrase.answer && <p className="text-sm text-gray-400 mt-1">{phrase.answer}</p>}
+            {phrase.answer && <p className="text-gray-400 font-semibold mt-1">{phrase.answer}</p>}
 
             {undefinedBlankedWords.length > 0 && (
                 <div className="mt-2 flex flex-col items-center gap-1.5 border-t pt-3 w-full">
