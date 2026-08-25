@@ -68,7 +68,7 @@ export default function WordSpan({ token, onPracticeWord }) {
 
                 {tooltipOpen && (
                     <span className="absolute left-1/2 -translate-x-1/2 top-full pt-1 z-10">
-                        <span className="block w-max max-w-xs rounded bg-gray-800 text-white text-sm px-3 py-2 shadow-lg text-left flex flex-col gap-1.5">
+                        <span className="w-max max-w-xs rounded bg-gray-800 text-white text-sm px-3 py-2 shadow-lg text-left flex flex-col gap-1.5">
                             {entry ? (
                                 <span className="flex flex-col gap-1">
                                     <span>{entry.definition}</span>
