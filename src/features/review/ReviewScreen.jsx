@@ -19,6 +19,7 @@ export default function ReviewScreen({
     includeAll = false,
     onExit,
     onPracticeWord,
+    onFirstAction,
 }) {
     const { getAudioUrl, wordDict, updateWord } = useApp();
 
@@ -58,7 +59,7 @@ export default function ReviewScreen({
 
             setHistory((h) => [...h, { queueIdsBefore: queueIds, phrase: current, prevSrs }]);
 
-            onGrade?.(current, newSrs);
+            onGrade?.(current, newSrs, grade);
 
             setQueueIds((ids) => {
                 const rest = ids.slice(1);
@@ -72,7 +73,10 @@ export default function ReviewScreen({
         [current, onGrade, queueIds]
     );
 
-    const handleInputSubmit = useCallback((value) => setUserAnswer(value), []);
+    const handleInputSubmit = useCallback((value) => {
+        onFirstAction?.();
+        setUserAnswer(value);
+    }, [onFirstAction]);
 
     const handleClozeSubmit = useCallback((results) => {
         setClozeResults(results);
@@ -147,6 +151,7 @@ export default function ReviewScreen({
     function handleCardTap() {
         if (cardType !== 'flip') return;
         if (!revealed) {
+            onFirstAction?.();
             setRevealed(true);
         } else {
             handleGrade('easy');
@@ -182,6 +187,7 @@ export default function ReviewScreen({
                 e.preventDefault();
                 if (cardType === 'flip') {
                     if (!revealed) {
+                        onFirstAction?.()
                         setRevealed(true);
                     } else {
                         handleGrade('easy');
@@ -206,111 +212,95 @@ export default function ReviewScreen({
 
     if (!current) {
         return (
-            <div className="min-h-screen flex flex-col items-center justify-center gap-3 text-gray-400 pt-16">
-                <p>
-                    {includeAll
-                        ? 'No phrases match this filter.'
-                        : `All caught up${filterTags.length ? ' for this filter' : ''} — no cards due right now.`}
-                </p>
-                {onExit && (
-                    <button onClick={onExit} className="text-sm text-blue-500 underline">
-                        Back to normal review
-                    </button>
-                )}
+            <div className="max-w-xl mx-auto pt-16 px-4 text-center text-muted">
+                <p className="mb-3">{includeAll ? 'No phrases match this filter.' : `All caught up${filterTags.length ? ' for this filter' : ''} — no cards due right now.`}</p>
+                {onExit && <button onClick={onExit} className="text-sm text-accent underline">Back to normal review</button>}
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 gap-8 px-4 pt-16">
+        <div className="max-w-xl mx-auto pt-8 px-4">
             {filterTags.length > 0 && (
-                <div className="flex gap-1.5 flex-wrap justify-center items-center">
+                <div className="flex gap-1.5 flex-wrap justify-center items-center mb-4">
                     {filterTags.map((t) => (
-                        <span key={t} className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full">
-                            {t}
-                        </span>
+                        <span key={t} className="text-xs bg-accent-soft text-accent-soft-text px-2 py-0.5 rounded-full">{t}</span>
                     ))}
-                    {onExit && (
-                        <button onClick={onExit} className="text-xs text-gray-400 underline ml-2">
-                            exit custom study
-                        </button>
-                    )}
+                    {onExit && <button onClick={onExit} className="text-xs text-muted underline ml-2">exit custom study</button>}
                 </div>
             )}
 
-            {cardType === 'cloze' ? (
-                clozeResults === null ? (
-                    <ClozeCard phrase={current} onSubmitted={handleClozeSubmit} onPracticeWord={onPracticeWord} />
-                ) : (
-                    <div className="flex flex-col items-center gap-3">
-                        <ClozeResult phrase={current} results={clozeResults} />
-                        <button
-                            onClick={() => handleGrade(autoGrade)}
-                            className={`mt-4 text-sm px-4 py-1.5 rounded ${autoGrade === 'easy' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                                }`}
-                        >
-                            Continue
-                        </button>
-                        <p className="text-xs text-gray-300">press space to continue · 1/2 to override grade</p>
-                    </div>
-                )
-            ) : (
-                <div
-                    onClick={cardType === 'flip' ? handleCardTap : undefined}
-                    className={cardType === 'flip' ? 'cursor-pointer select-none' : '' + 'flex flex-col items-center'}
-                >
-                    <ClickableText text={current.text} onPracticeWord={onPracticeWord} />
-                    {cardType === 'input' ? (
-                        userAnswer === null ? (
-                            <InputAnswer phraseId={current.id} onSubmitted={handleInputSubmit} />
-                        ) : (
-                            <AnswerDiff userAnswer={userAnswer} correctAnswer={current.answer} />
-                        )
+            <div className="flex justify-between items-center mb-6 text-xs text-muted">
+                <span>{queueIds.length} more due</span>
+                <div className="flex gap-1">
+                    {Array.from({ length: Math.min(5, queueIds.length) }).map((_, i) => (
+                        <div key={i} className={`w-5 h-0.5 rounded-full ${i === 0 ? 'bg-accent' : 'bg-border'}`} />
+                    ))}
+                </div>
+                {current.hasAudio && (
+                    <button onClick={replayAudio} className="text-muted hover:text-ink">🔊 Replay</button>
+                )}
+            </div>
+
+            {current.tags?.length > 0 && (
+                <p className="text-center text-xs text-faint tracking-wide mb-2">{current.tags.join(' · ')}</p>
+            )}
+
+            <div className="bg-surface border border-border rounded-xl px-7 py-9 text-center mb-5">
+                {cardType === 'cloze' ? (
+                    clozeResults === null ? (
+                        <ClozeCard phrase={current} onSubmitted={handleClozeSubmit} onPracticeWord={onPracticeWord} onFirstAction={onFirstAction} />
                     ) : (
-                        <>
-                            {revealed && <p className="text-xl text-gray-500 mt-4">{current.answer}</p>}
-                            {!revealed && <p className="text-sm text-gray-400 mt-4">tap or press space to reveal</p>}
-                        </>
-                    )}
-                </div>
-            )}
+                        <ClozeResult phrase={current} results={clozeResults} />
+                    )
+                ) : (
+                    <div onClick={cardType === 'flip' ? handleCardTap : undefined} className={cardType === 'flip' ? 'cursor-pointer select-none' : ''}>
+                        <ClickableText text={current.text} onPracticeWord={onPracticeWord} />
+                        {cardType === 'input' ? (
+                            userAnswer === null ? (
+                                <InputAnswer phraseId={current.id} onSubmitted={handleInputSubmit} />
+                            ) : (
+                                <AnswerDiff userAnswer={userAnswer} correctAnswer={current.answer} />
+                            )
+                        ) : (
+                            <>
+                                {revealed && <p className="text-lg text-muted mt-4">{current.answer}</p>}
+                                {!revealed && <p className="text-xs text-faint mt-4">tap or press space to reveal</p>}
+                            </>
+                        )}
+                    </div>
+                )}
+            </div>
 
-            {current.hasAudio && (
-                <button
-                    onClick={replayAudio}
-                    className="text-sm text-blue-500 hover:text-blue-700" title="Replay audio"
-                >
-                    🔊 Replay
-                </button>
+            {cardType === 'cloze' && clozeResults !== null && (
+                <div className="flex justify-center mb-5">
+                    <button
+                        onClick={() => handleGrade(autoGrade)}
+                        className={`text-sm font-medium px-6 py-2.5 rounded-lg text-white ${autoGrade === 'easy' ? 'bg-success' : 'bg-danger'}`}
+                    >
+                        Continue
+                    </button>
+                </div>
             )}
 
             {isChecked && cardType !== 'cloze' && (
-                <div className="flex gap-4">
-                    <button onClick={() => handleGrade('difficult')} className="px-6 py-2 rounded bg-red-100 text-red-700 hover:bg-red-200">
+                <div className="flex gap-3 justify-center mb-5">
+                    <button onClick={() => handleGrade('difficult')} className="px-6 py-2.5 rounded-lg text-sm font-medium bg-danger-soft text-danger-soft-text hover:opacity-80">
                         Difficult
                     </button>
-                    <button onClick={() => handleGrade('easy')} className="px-6 py-2 rounded bg-green-100 text-green-700 hover:bg-green-200">
+                    <button onClick={() => handleGrade('easy')} className="px-6 py-2.5 rounded-lg text-sm font-medium bg-success-soft text-success-soft-text hover:opacity-80">
                         Easy
                     </button>
                 </div>
             )}
 
-            <p className="fixed bottom-3 left-0 right-0 text-center text-xs text-gray-500 px-4">
-                {queueIds.length - 1} more due · "e" to edit · "d" to duplicate
-                {history.length > 0 && ' · "b" to go back'}
-            </p>
+            <div className="border-t border-border pt-3 flex justify-center gap-5 text-xs text-faint pb-6">
+                <span>e edit</span>
+                <span>k duplicate</span>
+                {history.length > 0 && <span>b back</span>}
+            </div>
 
-            <PhraseModal
-                open={editingPhrase}
-                existingPhrase={current}
-                onClose={() => setEditingPhrase(false)}
-            />
-
-            <PhraseModal
-                open={duplicatingPhrase}
-                duplicateFrom={current}
-                onClose={() => setDuplicatingPhrase(false)}
-            />
+            <PhraseModal open={editingPhrase} existingPhrase={current} onClose={() => setEditingPhrase(false)} />
         </div>
     );
 }

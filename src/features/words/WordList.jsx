@@ -4,6 +4,7 @@ import { useApp } from '../../context/AppContext';
 import WordEditorModal from './WordEditorModal';
 import { tokenize } from '../../lib/tokenize';
 import { masteryLabel } from '../../lib/wordMastery';
+import { phraseContainsWord } from '../../lib/phraseWords';
 
 const FILTERS = [
     { id: 'all', label: 'All' },
@@ -12,12 +13,63 @@ const FILTERS = [
     { id: 'strong', label: 'Strong' },
 ];
 
-export default function WordList() {
-    const { words, updateWord, deleteWord, addWord, wordDict } = useApp();
+function WordDetailPanel({ word, deleteWord, onBack, onEdit, onPractice }) {
+    const { phrases } = useApp();
+    const { label, color } = masteryLabel(word.mastery?.score ?? 50);
+    const colorClasses = { red: 'bg-danger-soft text-danger-soft-text', yellow: 'bg-warning-soft text-warning-soft-text', green: 'bg-success-soft text-success-soft-text' };
+    const barColor = { red: 'bg-danger', yellow: 'bg-warning', green: 'bg-success' }[color];
+    const seenIn = phrases.filter((p) => phraseContainsWord(p, word.text));
+    const score = word.mastery?.score ?? 50;
+
+    return (
+        <div className="max-w-xl mx-auto pt-8 px-6 pb-24">
+            <button onClick={onBack} className="text-sm text-muted mb-4">← Back</button>
+
+            <p className="font-voice text-2xl text-ink capitalize mb-1">{word.text}</p>
+            <p className="text-sm text-muted mb-2">{word.definition}</p>
+            {word.notes && <p className="text-xs text-faint whitespace-pre-line mb-2">{word.notes}</p>}
+            <span className={`text-xs px-2 py-0.5 rounded-full ${colorClasses[color]}`}>{label} · {score}</span>
+
+            <div className="border-t border-border mt-5 pt-4">
+                <p className="text-xs text-faint mb-2">Your performance</p>
+                <div className="h-2 rounded-full bg-surface-sunken overflow-hidden">
+                    <div className={`h-full ${barColor}`} style={{ width: `${score}%` }} />
+                </div>
+                <p className="text-xs text-muted mt-1">
+                    {word.mastery?.correct ?? 0} correct · {word.mastery?.wrong ?? 0} wrong
+                </p>
+            </div>
+
+            <div className="border-t border-border mt-4 pt-4">
+                <p className="text-xs text-faint mb-2">Seen in {seenIn.length} phrase{seenIn.length === 1 ? '' : 's'}</p>
+                <div className="flex flex-col gap-2">
+                    {seenIn.map((p) => (
+                        <div key={p.id} className="text-sm">
+                            <span className="font-voice text-ink">{p.text}</span>
+                            {p.answer && <span className="text-muted"> — {p.answer}</span>}
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            <div className="flex gap-2 mt-6">
+                <button onClick={onPractice} className="flex-1 bg-accent text-white text-sm font-medium py-2 rounded-lg hover:bg-accent-hover">
+                    Practice this word
+                </button>
+                <button onClick={onEdit} className="text-sm text-muted px-3 py-2 border border-border rounded-lg">Edit</button>
+                <button onClick={() => { if (confirm('Delete this word?')) { deleteWord(word.id); onBack(); } }} className="text-sm text-danger-soft-text px-3 py-2 border border-border rounded-lg">Delete</button>
+            </div>
+        </div>
+    );
+}
+
+export default function WordList({ onPractice }) {
+    const { words, updateWord, deleteWord, addWord } = useApp();
     const [search, setSearch] = useState('');
     const [masteryFilter, setMasteryFilter] = useState('all');
+    const [selected, setSelected] = useState(null);
     const [editingId, setEditingId] = useState(null);
-    const [addingWord, setAddingWord] = useState(null)
+    const [addingWord, setAddingWord] = useState(null);
 
     const filtered = useMemo(() => {
         const q = search.toLowerCase().trim();
@@ -28,22 +80,40 @@ export default function WordList() {
                 const { label } = masteryLabel(w.mastery?.score ?? 50);
                 return label.toLowerCase() === masteryFilter;
             })
-            .sort((a, b) =>
-                masteryFilter === 'weak' ? (a.mastery?.score ?? 50) - (b.mastery?.score ?? 50) : 0
-            );
+            .sort((a, b) => (masteryFilter === 'weak' ? (a.mastery?.score ?? 50) - (b.mastery?.score ?? 50) : 0));
     }, [words, search, masteryFilter]);
 
     const editingWord = words.find((w) => w.id === editingId) ?? null;
+    const validNewWord = search.trim() !== '' && filtered.find((w) => w.text === search.toLowerCase().trim()) === undefined;
 
-    const validNewWord = search.trim() != '' && filtered.find(word => word.text == search.toLowerCase().trim()) == undefined
+    if (selected) {
+        const word = words.find((w) => w.id === selected.id) ?? selected;
+        return (
+            <>
+                <WordDetailPanel
+                    word={word}
+                    deleteWord={deleteWord}
+                    onBack={() => setSelected(null)}
+                    onEdit={() => setEditingId(word.id)}
+                    onPractice={() => onPractice?.(word.text)}
+                />
+                <WordEditorModal
+                    wordKey={editingWord?.text ?? null}
+                    existing={editingWord}
+                    onSave={(updates) => editingWord && updateWord(editingWord.id, updates)}
+                    onClose={() => setEditingId(null)}
+                />
+            </>
+        );
+    }
 
     return (
-        <div className="max-w-2xl mx-auto pt-20 px-4 pb-24">
+        <div className="max-w-2xl mx-auto pt-8 px-6 pb-24">
             <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search or add words..."
-                className="border rounded px-3 py-2 w-full mb-2"
+                className="border border-border rounded-lg px-3 py-2 w-full mb-2 bg-surface text-sm"
             />
 
             <div className="flex flex-wrap gap-1.5 mb-2">
@@ -51,9 +121,7 @@ export default function WordList() {
                     <button
                         key={f.id}
                         onClick={() => setMasteryFilter(f.id)}
-                        className={`text-xs px-2.5 py-1 rounded-full border ${masteryFilter === f.id
-                                ? 'bg-gray-800 text-white border-gray-800'
-                                : 'text-gray-500 border-gray-300 hover:bg-gray-50'
+                        className={`text-xs px-2.5 py-1 rounded-full border ${masteryFilter === f.id ? 'bg-ink text-white border-ink' : 'text-muted border-border hover:bg-surface-sunken'
                             }`}
                     >
                         {f.label}
@@ -61,75 +129,37 @@ export default function WordList() {
                 ))}
             </div>
 
-            <p className="text-sm text-gray-400">
-                {search.trim() || masteryFilter !== 'all'
-                    ? `${filtered.length} of ${words.length} words`
-                    : `${words.length} word${words.length === 1 ? '' : 's'}`}
+            <p className="text-sm text-muted mb-2">
+                {search.trim() || masteryFilter !== 'all' ? `${filtered.length} of ${words.length} words` : `${words.length} words`}
             </p>
 
+            {filtered.length === 0 && <p className="text-muted text-sm">No words found.</p>}
 
-            {filtered.length === 0 && (
-                <p className="text-gray-400 text-sm">No words found.</p>
+            {validNewWord && (
+                <button onClick={() => setAddingWord(tokenize(search)[0].key)} className="text-sm mb-2 text-accent">
+                    + Add new word
+                </button>
             )}
 
-            {validNewWord &&
-                <button
-                    onClick={() => setAddingWord(tokenize(search)[0].key)}
-                    className='text-sm mb-2 text-blue-600'
-                >
-                    Add new word
-                </button>
-            }
-
-            <ul className="flex flex-col gap-2">
-                {filtered.map((word) => (
-                    <li key={word.id} className="border rounded-lg p-3 flex justify-between items-start gap-3">
-                        <div>
-                            <div className="flex items-center gap-2 flex-wrap">
-                                <p className="font-medium capitalize">{word.text}</p>
-                                {(() => {
-                                    const { label, color } = masteryLabel(word.mastery?.score ?? 50);
-                                    const colorClasses = {
-                                        red: 'bg-red-50 text-red-600',
-                                        yellow: 'bg-yellow-50 text-yellow-700',
-                                        green: 'bg-green-50 text-green-700',
-                                    };
-                                    return (
-                                        <span className={`text-xs px-2 py-0.5 rounded-full ${colorClasses[color]}`}>
-                                            {label} · {word.mastery?.score ?? 50}
-                                        </span>
-                                    );
-                                })()}
+            <div className="flex flex-col gap-2">
+                {filtered.map((word) => {
+                    const { label, color } = masteryLabel(word.mastery?.score ?? 50);
+                    const colorClasses = { red: 'bg-danger-soft text-danger-soft-text', yellow: 'bg-warning-soft text-warning-soft-text', green: 'bg-success-soft text-success-soft-text' };
+                    return (
+                        <button
+                            key={word.id}
+                            onClick={() => setSelected(word)}
+                            className="bg-surface border border-border rounded-xl px-4 py-3 text-left hover:border-border-strong"
+                        >
+                            <div className="flex items-center gap-2">
+                                <p className="font-medium text-ink capitalize">{word.text}</p>
+                                <span className={`text-xs px-2 py-0.5 rounded-full ${colorClasses[color]}`}>{label} · {word.mastery?.score ?? 50}</span>
                             </div>
-                            <p className="text-sm text-gray-500">{word.definition}</p>
-                            {word.notes && <p className="text-xs text-gray-400 mt-1 whitespace-pre-line">{word.notes}</p>}
-                        </div>
-                        <div className="flex gap-2 shrink-0">
-                            <button
-                                onClick={() => setEditingId(word.id)}
-                                className="text-sm text-blue-600"
-                            >
-                                Edit
-                            </button>
-                            <button
-                                onClick={() => {
-                                    if (confirm('Delete this word?')) deleteWord(word.id);
-                                }}
-                                className="text-sm text-red-500"
-                            >
-                                Delete
-                            </button>
-                        </div>
-                    </li>
-                ))}
-            </ul>
-
-            <WordEditorModal
-                wordKey={editingWord?.text ?? null}
-                existing={editingWord}
-                onSave={(updates) => editingWord && updateWord(editingWord.id, updates)}
-                onClose={() => setEditingId(null)}
-            />
+                            <p className="text-sm text-muted">{word.definition}</p>
+                        </button>
+                    );
+                })}
+            </div>
 
             <WordEditorModal
                 wordKey={addingWord ?? null}

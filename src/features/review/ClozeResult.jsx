@@ -19,7 +19,10 @@ export default function ClozeResult({ phrase, results }) {
 
     return (
         <div className="flex flex-col gap-2 max-w-2xl">
-            <p className={allCorrect ? 'text-white bg-green-600 max-w-fit py-0.5 px-2 rounded-full font-medium' : 'text-white bg-red-500 max-w-fit py-0.5 px-2 rounded-full font-medium'}>
+            <p
+                className={allCorrect ? 'text-success-soft-text font-medium' : 'text-danger-soft-text font-medium'}
+            >
+
                 {allCorrect ? 'Correct!' : 'Not quite'}
             </p>
             <p className="text-2xl leading-relaxed text-center">
@@ -52,7 +55,7 @@ export default function ClozeResult({ phrase, results }) {
                             <button
                                 key={key}
                                 onClick={() => setAddingKey(key)}
-                                className="text-xs px-2.5 py-1 rounded-full border border-dashed border-gray-300 text-gray-500 hover:bg-gray-50"
+                                className="text-xs px-2.5 py-1 rounded-full border border-dashed border-border-strong text-muted hover:bg-surface-sunken"
                             >
                                 + {key}
                             </button>

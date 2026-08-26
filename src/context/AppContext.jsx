@@ -114,6 +114,21 @@ export function AppProvider({ children }) {
         return data.signedUrl;
     }
 
+    async function logReview(phraseId, grade) {
+        await supabase.from('review_log').insert({ phrase_id: phraseId, grade });
+    }
+
+    async function getReviewHistory(phraseId, limit = 5) {
+        const { data, error } = await supabase
+            .from('review_log')
+            .select('grade, created_at')
+            .eq('phrase_id', phraseId)
+            .order('created_at', { ascending: false })
+            .limit(limit);
+        if (error) return [];
+        return data;
+    }
+
     function importWords(newWords) {
         // Bulk replace: wipe and re-insert — simplest for occasional manual imports
         (async () => {
@@ -148,6 +163,8 @@ export function AppProvider({ children }) {
         saveAudio,
         removeAudio,
         getAudioUrl,
+        logReview,
+        getReviewHistory
     };
 
     return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

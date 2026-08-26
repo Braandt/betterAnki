@@ -25,12 +25,10 @@ export default function InputAnswer({ phraseId, onSubmitted }) {
                 value={value}
                 onChange={(e) => setValue(e.target.value)}
                 placeholder="Type the answer..."
-                className="border rounded px-4 py-2 text-lg w-full text-center"
-                autoComplete="off"
-                autoCorrect="off"
-                spellCheck="false"
+                className="border-0 border-b-2 border-border-strong bg-transparent text-center text-lg w-full max-w-xs mx-auto outline-none py-1 text-ink focus:border-accent"
+                autoComplete="off" autoCorrect="off" spellCheck="false"
             />
-            <p className="text-sm text-gray-400">press enter to check</p>
+            <p className="text-xs text-faint mt-3">press enter to check</p>
         </form>
     );
 }

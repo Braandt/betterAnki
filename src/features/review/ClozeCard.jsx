@@ -20,11 +20,9 @@ function AutoWidthInput({ value, onChange, onKeyDown, inputRef, placeholder, dis
     }, [value, placeholder]);
 
     const statusClass =
-        status === 'correct'
-            ? 'border-green-500 bg-green-50 text-green-700'
-            : status === 'wrong'
-                ? 'border-red-400 bg-red-50'
-                : 'border-blue-400 bg-blue-50';
+        status === 'correct' ? 'border-success bg-success-soft text-success-soft-text' :
+            status === 'wrong' ? 'border-danger bg-danger-soft' :
+                'border-accent bg-accent-soft';
 
     return (
         <span className="relative inline-block align-middle mx-1">
@@ -39,7 +37,7 @@ function AutoWidthInput({ value, onChange, onKeyDown, inputRef, placeholder, dis
                 placeholder={placeholder}
                 disabled={disabled}
                 style={{ width: `${width}px` }}
-                className={`inline-block border-b-2 text-center outline-none rounded px-1 text-3xl transition-[width] duration-100 placeholder-gray-300 disabled:opacity-100 ${statusClass}`}
+                className={`inline-block border-b-2 text-center outline-none rounded px-1 font-voice text-2xl transition-[width] duration-100 placeholder-faint disabled:opacity-100 ${statusClass}`}
                 autoComplete="off"
                 autoCorrect="off"
                 spellCheck="false"
@@ -49,7 +47,7 @@ function AutoWidthInput({ value, onChange, onKeyDown, inputRef, placeholder, dis
     );
 }
 
-export default function ClozeCard({ phrase, onSubmitted, onPracticeWord }) {
+export default function ClozeCard({ phrase, onSubmitted, onPracticeWord, onFirstAction }) {
     const { wordDict } = useApp();
     const tokens = tokenize(phrase.text);
     const clozeIndices = phrase.clozeIndices || [];
@@ -90,6 +88,7 @@ export default function ClozeCard({ phrase, onSubmitted, onPracticeWord }) {
     }
 
     function handleCheck() {
+        onFirstAction?.();
         const results = checkClozeAnswers(tokens, clozeIndices, values);
         const allCorrect = results.every((r) => r.isCorrect);
 
@@ -165,7 +164,7 @@ export default function ClozeCard({ phrase, onSubmitted, onPracticeWord }) {
 
     return (
         <div className="flex flex-col max-w-2xl">
-            <p className="text-3xl leading-relaxed text-center mb-4">
+            <p className="font-voice text-2xl leading-relaxed text-center text-ink mb-4">
                 {tokens.map((token, i) => {
                     const blankPos = clozeIndices.indexOf(i);
 
@@ -205,28 +204,31 @@ export default function ClozeCard({ phrase, onSubmitted, onPracticeWord }) {
                 })}
             </p>
 
-            {phase === 'correcting' && (
-                <p className="text-sm text-red-500">Type the correct word(s) to continue</p>
-            )}
+            {phase === 'correcting' &&
+                <p className="text-sm text-danger-soft-text">Type the correct word(s) to continue</p>
+            }
+
 
             <div className='bg-gray-100 rounded-md p-2'>
                 {wordHints.length > 0 && (
                     <div className="flex flex-col gap-0.5 mb-2">
-                        {wordHints.map((hint, i) => (
-                            <p key={i} className="text-gray-500 font-semibold">
-                                {hint}
-                            </p>
-                        ))}
+                        {wordHints.map((hint, i) =>
+                            <p key={i} className="text-sm text-muted">{hint}</p>)
+                        }
+
                     </div>
                 )}
 
-                {phrase.showTranslationUpfront && phrase.answer && (
-                    <p className="text-gray-800 font-semibold border-t border-gray-300 pt-2 ">{phrase.answer}</p>
-                )}
+                {phrase.showTranslationUpfront && phrase.answer &&
+                    <p className="text-sm text-faint italic">{phrase.answer}</p>
+                }
             </div>
 
             {phase === 'answering' ? (
-                <button onClick={handleCheck} className="text-sm max-w-fit mx-auto bg-blue-600 text-white rounded px-4 py-1.5 mt-3">
+                <button
+                    onClick={handleCheck}
+                    className="text-sm bg-accent text-white rounded-lg px-4 py-1.5 mt-2 hover:bg-accent-hover"
+                >
                     Check
                 </button>
             ) : (
