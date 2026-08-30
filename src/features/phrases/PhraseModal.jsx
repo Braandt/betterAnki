@@ -6,6 +6,79 @@ import AudioRecorder from '../../components/AudioRecorder';
 import { getAllTags } from '../../lib/tags';
 import { tokenize } from '../../lib/tokenize';
 import { useApp } from '../../context/AppContext';
+import { findExpressionMatches } from '../../lib/expressions';
+import WordEditorModal from '../words/WordEditorModal';
+
+function ExpressionHelper({ text }) {
+    const { wordDict, addWord } = useApp();
+    const [selected, setSelected] = useState([]);
+    const [showEditor, setShowEditor] = useState(false);
+    const tokens = tokenize(text);
+    const matches = findExpressionMatches(tokens, wordDict);
+
+    function toggle(i) {
+        setSelected((prev) => (prev.includes(i) ? prev.filter((x) => x !== i) : [...prev, i].sort((a, b) => a - b)));
+    }
+
+    const selectedKey = selected.length >= 2 ? selected.map((i) => tokens[i].key).join(' ') : null;
+    const alreadyExists = selectedKey && wordDict[selectedKey];
+
+    if (!text.trim()) return null;
+
+    return (
+        <div className="flex flex-col gap-2">
+            {matches.length > 0 && (
+                <div>
+                    <p className="text-xs text-faint mb-1">Expressions recognized:</p>
+                    <div className="flex flex-wrap gap-1.5">
+                        {matches.map((m) => (
+                            <span key={m.key} className="text-xs bg-accent-soft text-accent-soft-text px-2 py-0.5 rounded-full">
+                                {m.key}
+                            </span>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            <div>
+                <p className="text-xs text-faint mb-1">Click 2+ words to mark a new expression:</p>
+                <p className="border rounded px-3 py-2 bg-gray-50 leading-relaxed">
+                    {tokens.map((t, i) =>
+                        !t.isWord ? (
+                            <span key={i}>{t.text}</span>
+                        ) : (
+                            <span
+                                key={i}
+                                onClick={() => toggle(i)}
+                                className={`cursor-pointer rounded px-0.5 ${selected.includes(i) ? 'bg-accent text-white' : 'hover:bg-yellow-200'}`}
+                            >
+                                {t.text}
+                            </span>
+                        )
+                    )}
+                </p>
+            </div>
+
+            {selectedKey && (
+                <button
+                    type="button"
+                    onClick={() => setShowEditor(true)}
+                    disabled={!!alreadyExists}
+                    className="text-sm text-accent underline disabled:text-faint disabled:no-underline w-fit"
+                >
+                    {alreadyExists ? `"${selectedKey}" already defined` : `+ Add "${selectedKey}" as expression`}
+                </button>
+            )}
+
+            <WordEditorModal
+                wordKey={showEditor ? selectedKey : null}
+                existing={null}
+                onSave={({ definition, notes }) => addWord({ text: selectedKey, definition, notes })}
+                onClose={() => { setShowEditor(false); setSelected([]); }}
+            />
+        </div>
+    );
+}
 
 function ClozeWordPicker({ text, selected, onToggle }) {
     const tokens = tokenize(text);
@@ -47,6 +120,10 @@ export default function PhraseModal({ open, onClose, existingPhrase = null, dupl
     const [showTranslationUpfront, setShowTranslationUpfront] = useState(true);
     const [existingAudioUrl, setExistingAudioUrl] = useState(null);
     const [audioAction, setAudioAction] = useState(null);
+
+    const canSubmit =
+        text.trim() !== '' &&
+        (type === 'cloze' ? clozeIndices.length > 0 : answer.trim() !== '');
 
     const allTags = getAllTags(phrases);
     const source = existingPhrase ?? duplicateFrom; // whichever one supplies the pre-fill data
@@ -142,6 +219,8 @@ export default function PhraseModal({ open, onClose, existingPhrase = null, dupl
                     className="border rounded px-3 py-2"
                 />
 
+                <ExpressionHelper text={text} />
+
                 {type === 'cloze' ? (
                     <>
                         <ClozeWordPicker text={text} selected={clozeIndices} onToggle={toggleClozeIndex} />
@@ -167,8 +246,12 @@ export default function PhraseModal({ open, onClose, existingPhrase = null, dupl
                     <button type="button" onClick={onClose} className="px-3 py-1.5 text-gray-500">
                         Cancel
                     </button>
-                    <button type="submit" className="bg-blue-600 text-white rounded px-4 py-1.5">
-                        {existingPhrase ? 'Save' : 'Add'} <span className="text-blue-200 text-xs ml-1">(Ctrl+Enter)</span>
+                    <button
+                        type="submit"
+                        disabled={!canSubmit}
+                        className="bg-accent text-white rounded-lg px-4 py-1.5 hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-accent"
+                    >
+                        {existingPhrase ? 'Save' : 'Add'} <span className="text-white/70 text-xs ml-1">(Ctrl+Enter)</span>
                     </button>
                 </div>
             </form>

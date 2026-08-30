@@ -19,13 +19,10 @@ export default function ClozeResult({ phrase, results }) {
 
     return (
         <div className="flex flex-col gap-2 max-w-2xl">
-            <p
-                className={allCorrect ? 'text-success-soft-text font-medium' : 'text-danger-soft-text font-medium'}
-            >
-
-                {allCorrect ? 'Correct!' : 'Not quite'}
-            </p>
-            <p className="text-2xl leading-relaxed text-center">
+            <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${allCorrect ? 'bg-success-soft text-success-soft-text' : 'bg-danger-soft text-danger-soft-text'}`}>
+                {allCorrect ? 'Correct' : 'Not quite'}
+            </span>
+            <p className="text-2xl leading-relaxed text-left max-w-md mx-auto font-voice">
                 {tokens.map((token, i) => {
                     const r = resultMap[i];
                     if (!r) return <span key={i}>{token.text}</span>;
@@ -45,7 +42,7 @@ export default function ClozeResult({ phrase, results }) {
                     );
                 })}
             </p>
-            {phrase.answer && <p className="text-gray-400 font-semibold mt-1">{phrase.answer}</p>}
+            {phrase.answer && <p className="text-gray-500 mt-4">{phrase.answer}</p>}
 
             {undefinedBlankedWords.length > 0 && (
                 <div className="mt-2 flex flex-col items-center gap-1.5 border-t pt-3 w-full">

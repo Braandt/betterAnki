@@ -1,5 +1,5 @@
 // App.jsx
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import Sidebar from './components/Sidebar';
 import ReviewScreen from './features/review/ReviewScreen';
@@ -85,6 +85,21 @@ function Home() {
         if (newView !== 'review') setFocusMode(false);
         setView(newView);
     }
+
+    useEffect(() => {
+        function handleKeyDown(e) {
+            const tag = e.target.tagName;
+            if (tag === 'INPUT' || tag === 'TEXTAREA' || e.target.isContentEditable) {
+                return;
+            }
+            if (e.key === 'a' || e.key === 'A') {
+                e.preventDefault();
+                setShowAddPhrase(true);
+            }
+        }
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, []);
 
     return (
         <div className="flex min-h-screen bg-paper">

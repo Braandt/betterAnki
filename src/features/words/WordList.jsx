@@ -71,6 +71,8 @@ export default function WordList({ onPractice }) {
     const [editingId, setEditingId] = useState(null);
     const [addingWord, setAddingWord] = useState(null);
 
+    const normalizedSearch = search.toLowerCase().trim().replace(/\s+/g, ' ');
+
     const filtered = useMemo(() => {
         const q = search.toLowerCase().trim();
         return words
@@ -84,7 +86,7 @@ export default function WordList({ onPractice }) {
     }, [words, search, masteryFilter]);
 
     const editingWord = words.find((w) => w.id === editingId) ?? null;
-    const validNewWord = search.trim() !== '' && filtered.find((w) => w.text === search.toLowerCase().trim()) === undefined;
+    const validNewWord = normalizedSearch !== '' && filtered.find(word => word.text === normalizedSearch) === undefined
 
     if (selected) {
         const word = words.find((w) => w.id === selected.id) ?? selected;
@@ -135,11 +137,14 @@ export default function WordList({ onPractice }) {
 
             {filtered.length === 0 && <p className="text-muted text-sm">No words found.</p>}
 
-            {validNewWord && (
-                <button onClick={() => setAddingWord(tokenize(search)[0].key)} className="text-sm mb-2 text-accent">
-                    + Add new word
+            {validNewWord &&
+                <button
+                    onClick={() => setAddingWord(normalizedSearch)}
+                    className='text-sm mb-2 text-blue-600'
+                >
+                    Add new word{normalizedSearch.includes(' ') ? ' / expression' : ''}
                 </button>
-            )}
+            }
 
             <div className="flex flex-col gap-2">
                 {filtered.map((word) => {

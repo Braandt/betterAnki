@@ -13,6 +13,7 @@ export default function WordEditorModal({ wordKey, existing, onSave, onClose }) 
 
     function handleSubmit(e) {
         e?.preventDefault();
+        e?.stopPropagation(); // don't let this bubble into an ancestor form (e.g. PhraseModal's)
         if (!definition.trim()) return;
         onSave({ definition: definition.trim(), notes: notes.trim() });
         onClose();

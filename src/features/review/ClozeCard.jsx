@@ -4,6 +4,8 @@ import { tokenize } from '../../lib/tokenize';
 import { checkClozeAnswers } from '../../lib/cloze';
 import { useApp } from '../../context/AppContext';
 import WordSpan from '../words/WordSpan';
+import ExpressionSpan from '../words/ExpressionSpan';
+import { buildExpressionIndex, findExpressionMatches } from '../../lib/expressions';
 
 const MIN_WIDTH = 60;
 const EXTRA_PADDING = 16;
@@ -26,7 +28,7 @@ function AutoWidthInput({ value, onChange, onKeyDown, inputRef, placeholder, dis
 
     return (
         <span className="relative inline-block align-middle mx-1">
-            <span ref={measureRef} className="invisible absolute whitespace-pre text-3xl" aria-hidden="true">
+            <span ref={measureRef} className="invisible absolute whitespace-pre font-voice text-2xl" aria-hidden="true">
                 {value || placeholder || ''}
             </span>
             <input
@@ -40,8 +42,8 @@ function AutoWidthInput({ value, onChange, onKeyDown, inputRef, placeholder, dis
                 className={`inline-block border-b-2 text-center outline-none rounded px-1 font-voice text-2xl transition-[width] duration-100 placeholder-faint disabled:opacity-100 ${statusClass}`}
                 autoComplete="off"
                 autoCorrect="off"
+                autoCapitalize="off"
                 spellCheck="false"
-                autoCapitalize='none'
             />
         </span>
     );
@@ -51,10 +53,14 @@ export default function ClozeCard({ phrase, onSubmitted, onPracticeWord, onFirst
     const { wordDict } = useApp();
     const tokens = tokenize(phrase.text);
     const clozeIndices = phrase.clozeIndices || [];
+    const blankedSet = new Set(clozeIndices);
+    const allExpressionMatches = findExpressionMatches(tokens, wordDict);
+
+    const expressionIndex = buildExpressionIndex(allExpressionMatches);
 
     const [values, setValues] = useState(() => clozeIndices.map(() => ''));
-    const [phase, setPhase] = useState('answering'); // 'answering' | 'correcting'
-    const [firstResults, setFirstResults] = useState(null); // locked in from the first attempt — used for grading
+    const [phase, setPhase] = useState('answering');
+    const [firstResults, setFirstResults] = useState(null);
     const [retryValues, setRetryValues] = useState(() => clozeIndices.map(() => ''));
     const [corrected, setCorrected] = useState(() => clozeIndices.map(() => false));
     const inputRefs = useRef([]);
@@ -97,7 +103,6 @@ export default function ClozeCard({ phrase, onSubmitted, onPracticeWord, onFirst
             return;
         }
 
-        // Enter correction mode: clear wrong blanks, lock correct ones
         setFirstResults(results);
         setRetryValues(results.map((r) => (r.isCorrect ? r.correctText : '')));
         setCorrected(results.map((r) => r.isCorrect));
@@ -121,7 +126,6 @@ export default function ClozeCard({ phrase, onSubmitted, onPracticeWord, onFirst
                 next[i] = true;
                 return next;
             });
-            // move focus to the next not-yet-corrected blank
             const nextIndex = firstResults.findIndex((r, idx) => idx > i && !r.isCorrect && !corrected[idx]);
             if (nextIndex !== -1) {
                 setTimeout(() => inputRefs.current[nextIndex]?.focus(), 0);
@@ -144,7 +148,6 @@ export default function ClozeCard({ phrase, onSubmitted, onPracticeWord, onFirst
 
     useEffect(() => {
         if (!allCorrected) return;
-
         function handleGlobalKeyDown(e) {
             if (e.key === 'Enter') {
                 e.preventDefault();
@@ -156,86 +159,96 @@ export default function ClozeCard({ phrase, onSubmitted, onPracticeWord, onFirst
     }, [allCorrected]);
 
     const wordHints = phrase.showTranslationUpfront
-        ? clozeIndices
-            .map((tokenIndex) => wordDict[tokens[tokenIndex].key])
-            .filter(Boolean)
-            .map((entry) => [entry.definition, entry.notes].filter(Boolean).join(' | '))
+        ? (() => {
+            const seen = new Set();
+            const hints = [];
+            clozeIndices.forEach((tokenIndex) => {
+                const match = expressionIndex.get(tokenIndex);
+                if (match) {
+                    if (!seen.has(match.key)) {
+                        seen.add(match.key);
+                        hints.push([match.entry.definition, match.entry.notes].filter(Boolean).join(' | '));
+                    }
+                    return;
+                }
+                const entry = wordDict[tokens[tokenIndex].key];
+                if (entry) hints.push([entry.definition, entry.notes].filter(Boolean).join(' | '));
+            });
+            return hints;
+        })()
         : [];
 
+
+    const renderExpressionIndex = new Map(
+        [...expressionIndex].filter(([idx, m]) => !m.tokenIndices.some((i) => blankedSet.has(i)))
+    );
+
     return (
-        <div className="flex flex-col max-w-2xl">
-            <p className="font-voice text-2xl leading-relaxed text-center text-ink mb-4">
+        <div className="flex flex-col items-center gap-3 max-w-2xl">
+            <p className="font-voice text-2xl leading-relaxed text-left text-ink max-w-md mx-auto">
                 {tokens.map((token, i) => {
                     const blankPos = clozeIndices.indexOf(i);
-
-                    if (blankPos === -1) {
-                        return token.isWord ? (
-                            <WordSpan key={i} token={token} onPracticeWord={onPracticeWord} />
-                        ) : (
-                            <span key={i}>{token.text}</span>
-                        );
-                    }
-
-                    if (phase === 'answering') {
+                    if (blankPos !== -1) {
+                        if (phase === 'answering') {
+                            return (
+                                <AutoWidthInput
+                                    key={i}
+                                    value={values[blankPos]}
+                                    onChange={(e) => handleChange(blankPos, e.target.value)}
+                                    onKeyDown={(e) => handleKeyDown(e, blankPos)}
+                                    inputRef={(el) => (inputRefs.current[blankPos] = el)}
+                                />
+                            );
+                        }
+                        const isCorrect = corrected[blankPos];
                         return (
                             <AutoWidthInput
                                 key={i}
-                                value={values[blankPos]}
-                                onChange={(e) => handleChange(blankPos, e.target.value)}
-                                onKeyDown={(e) => handleKeyDown(e, blankPos)}
+                                value={retryValues[blankPos]}
+                                onChange={(e) => handleRetryChange(blankPos, e.target.value)}
+                                onKeyDown={(e) => handleRetryKeyDown(e, blankPos)}
                                 inputRef={(el) => (inputRefs.current[blankPos] = el)}
+                                placeholder={!isCorrect ? firstResults[blankPos].correctText : undefined}
+                                disabled={isCorrect}
+                                status={isCorrect ? 'correct' : 'wrong'}
                             />
                         );
                     }
 
-                    const isCorrect = corrected[blankPos];
-                    return (
-                        <AutoWidthInput
-                            key={i}
-                            value={retryValues[blankPos]}
-                            onChange={(e) => handleRetryChange(blankPos, e.target.value)}
-                            onKeyDown={(e) => handleRetryKeyDown(e, blankPos)}
-                            inputRef={(el) => (inputRefs.current[blankPos] = el)}
-                            placeholder={!isCorrect ? firstResults[blankPos].correctText : undefined}
-                            disabled={isCorrect}
-                            status={isCorrect ? 'correct' : 'wrong'}
-                        />
+                    if (!token.isWord) return <span key={i}>{token.text}</span>;
+
+                    const match = renderExpressionIndex.get(i);
+                    return match ? (
+                        <ExpressionSpan key={i} token={token} match={match} allTokens={tokens} onPracticeWord={onPracticeWord} />
+                    ) : (
+                        <WordSpan key={i} token={token} onPracticeWord={onPracticeWord} />
                     );
                 })}
             </p>
 
-            {phase === 'correcting' &&
-                <p className="text-sm text-danger-soft-text">Type the correct word(s) to continue</p>
-            }
+            {phase === 'correcting' && (
+                <p className="text-sm text-danger-soft-text text-left max-w-md mx-auto">Type the correct word(s) to continue</p>
+            )}
 
+            {wordHints.length > 0 && (
+                <div className="flex flex-col gap-0.5 text-left max-w-md mx-auto w-full">
+                    {wordHints.map((hint, i) => <p key={i} className="text-sm text-muted">{hint}</p>)}
+                </div>
+            )}
 
-            <div className='bg-gray-100 rounded-md p-2'>
-                {wordHints.length > 0 && (
-                    <div className="flex flex-col gap-0.5 mb-2">
-                        {wordHints.map((hint, i) =>
-                            <p key={i} className="text-sm text-muted">{hint}</p>)
-                        }
-
-                    </div>
-                )}
-
-                {phrase.showTranslationUpfront && phrase.answer &&
-                    <p className="text-sm text-faint italic">{phrase.answer}</p>
-                }
-            </div>
+            {phrase.showTranslationUpfront && phrase.answer && (
+                <p className="text-sm text-faint italic text-left w-full max-w-md mx-auto self-stretch">{phrase.answer}</p>
+            )}
 
             {phase === 'answering' ? (
-                <button
-                    onClick={handleCheck}
-                    className="text-sm bg-accent text-white rounded-lg px-4 py-1.5 mt-2 hover:bg-accent-hover"
-                >
+                <button onClick={handleCheck} className="text-sm bg-accent text-white rounded-lg px-4 py-1.5 mt-1 hover:bg-accent-hover">
                     Check
                 </button>
             ) : (
                 <button
                     onClick={handleContinue}
                     disabled={!allCorrected}
-                    className="text-sm bg-blue-600 text-white rounded px-4 py-1.5 mt-1 disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="text-sm bg-accent text-white rounded-lg px-4 py-1.5 mt-1 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-accent-hover"
                 >
                     Continue
                 </button>

@@ -6,6 +6,7 @@ import { isDue } from '../../lib/srs';
 import { tokenize } from '../../lib/tokenize';
 import PhraseModal from './PhraseModal';
 import { relativeTime } from '../../lib/relativeTime';
+import { findExpressionMatches } from '../../lib/expressions';
 
 const STATUS_FILTERS = ['All', 'Due', 'New', 'Learned'];
 
@@ -16,19 +17,22 @@ function statusOf(p) {
 }
 
 function PhraseDetailPanel({ phrase, onBack, onEdit, onDelete, onPractice }) {
-    const { wordDict, getReviewHistory } = useApp();
-    const [history, setHistory] = useState([]);
-    const tokens = tokenize(phrase.text).filter((t) => t.isWord);
+    const { wordDict } = useApp();
+    const tokens = tokenize(phrase.text);
+    const expressionMatches = findExpressionMatches(tokens, wordDict);
+
+    // Words not covered by any recognized expression — same "individual word" list as before
+    const coveredIndices = new Set();
+    expressionMatches.forEach((m) => m.tokenIndices.forEach((i) => coveredIndices.add(i)));
+
+    const plainWordTokens = tokens.filter((t, i) => t.isWord && !coveredIndices.has(i));
+
     const status = statusOf(phrase);
     const statusStyle = {
         Due: 'bg-danger-soft text-danger-soft-text',
         New: 'bg-accent-soft text-accent-soft-text',
         Learned: 'bg-success-soft text-success-soft-text',
     }[status];
-
-    useEffect(() => {
-        getReviewHistory(phrase.id).then(setHistory);
-    }, [phrase.id]);
 
     return (
         <div className="max-w-xl mx-auto pt-8 px-6 pb-24">
@@ -41,7 +45,7 @@ function PhraseDetailPanel({ phrase, onBack, onEdit, onDelete, onPractice }) {
             <div className="border-t border-border mt-5 pt-4">
                 <p className="text-xs text-faint mb-2">Words</p>
                 <div className="flex flex-col gap-2">
-                    {tokens.map((t, i) => {
+                    {plainWordTokens.map((t, i) => {
                         const entry = wordDict[t.key];
                         return (
                             <div key={i} className="flex justify-between text-sm">
@@ -53,14 +57,15 @@ function PhraseDetailPanel({ phrase, onBack, onEdit, onDelete, onPractice }) {
                 </div>
             </div>
 
-            {history.length > 0 && (
+            {expressionMatches.length > 0 && (
                 <div className="border-t border-border mt-4 pt-4">
-                    <p className="text-xs text-faint mb-2">Review history</p>
-                    <div className="flex flex-col gap-1">
-                        {history.map((h, i) => (
-                            <p key={i} className="text-sm text-ink capitalize">
-                                {h.grade} <span className="text-muted">· {relativeTime(h.created_at)}</span>
-                            </p>
+                    <p className="text-xs text-faint mb-2">Expressions</p>
+                    <div className="flex flex-col gap-2">
+                        {expressionMatches.map((m, i) => (
+                            <div key={i} className="flex justify-between text-sm gap-3">
+                                <span className="text-ink capitalize">{m.key}</span>
+                                <span className="text-muted text-right">{m.entry.definition}</span>
+                            </div>
                         ))}
                     </div>
                 </div>

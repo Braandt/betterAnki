@@ -177,7 +177,7 @@ export default function ReviewScreen({
                 return;
             }
 
-            if (e.key === 'd' || e.key === 'd') {
+            if (e.key === 'd' || e.key === 'D') {
                 e.preventDefault();
                 setDuplicatingPhrase(true);
                 return;
@@ -212,7 +212,7 @@ export default function ReviewScreen({
 
     if (!current) {
         return (
-            <div className="max-w-xl mx-auto pt-16 px-4 text-center text-muted">
+            <div className="min-h-screen flex flex-col items-center justify-center px-4 text-center text-muted">
                 <p className="mb-3">{includeAll ? 'No phrases match this filter.' : `All caught up${filterTags.length ? ' for this filter' : ''} — no cards due right now.`}</p>
                 {onExit && <button onClick={onExit} className="text-sm text-accent underline">Back to normal review</button>}
             </div>
@@ -220,87 +220,94 @@ export default function ReviewScreen({
     }
 
     return (
-        <div className="max-w-xl mx-auto pt-8 px-4">
-            {filterTags.length > 0 && (
-                <div className="flex gap-1.5 flex-wrap justify-center items-center mb-4">
-                    {filterTags.map((t) => (
-                        <span key={t} className="text-xs bg-accent-soft text-accent-soft-text px-2 py-0.5 rounded-full">{t}</span>
-                    ))}
-                    {onExit && <button onClick={onExit} className="text-xs text-muted underline ml-2">exit custom study</button>}
-                </div>
-            )}
-
-            <div className="flex justify-between items-center mb-6 text-xs text-muted">
-                <span>{queueIds.length} more due</span>
-                <div className="flex gap-1">
-                    {Array.from({ length: Math.min(5, queueIds.length) }).map((_, i) => (
-                        <div key={i} className={`w-5 h-0.5 rounded-full ${i === 0 ? 'bg-accent' : 'bg-border'}`} />
-                    ))}
-                </div>
-                {current.hasAudio && (
-                    <button onClick={replayAudio} className="text-muted hover:text-ink">🔊 Replay</button>
-                )}
-            </div>
-
-            {current.tags?.length > 0 && (
-                <p className="text-center text-xs text-faint tracking-wide mb-2">{current.tags.join(' · ')}</p>
-            )}
-
-            <div className="bg-surface border border-border rounded-xl px-7 py-9 text-center mb-5">
-                {cardType === 'cloze' ? (
-                    clozeResults === null ? (
-                        <ClozeCard phrase={current} onSubmitted={handleClozeSubmit} onPracticeWord={onPracticeWord} onFirstAction={onFirstAction} />
-                    ) : (
-                        <ClozeResult phrase={current} results={clozeResults} />
-                    )
-                ) : (
-                    <div onClick={cardType === 'flip' ? handleCardTap : undefined} className={cardType === 'flip' ? 'cursor-pointer select-none' : ''}>
-                        <ClickableText text={current.text} onPracticeWord={onPracticeWord} />
-                        {cardType === 'input' ? (
-                            userAnswer === null ? (
-                                <InputAnswer phraseId={current.id} onSubmitted={handleInputSubmit} />
-                            ) : (
-                                <AnswerDiff userAnswer={userAnswer} correctAnswer={current.answer} />
-                            )
-                        ) : (
-                            <>
-                                {revealed && <p className="text-lg text-muted mt-4">{current.answer}</p>}
-                                {!revealed && <p className="text-xs text-faint mt-4">tap or press space to reveal</p>}
-                            </>
-                        )}
+        <div className="min-h-screen flex flex-col items-center justify-center px-4 py-10">
+            <div className="w-full max-w-xl">
+                {filterTags.length > 0 && (
+                    <div className="flex gap-1.5 flex-wrap justify-center items-center mb-4">
+                        {filterTags.map((t) => (
+                            <span key={t} className="text-xs bg-accent-soft text-accent-soft-text px-2 py-0.5 rounded-full">{t}</span>
+                        ))}
+                        {onExit && <button onClick={onExit} className="text-xs text-muted underline ml-2">exit custom study</button>}
                     </div>
                 )}
-            </div>
 
-            {cardType === 'cloze' && clozeResults !== null && (
-                <div className="flex justify-center mb-5">
-                    <button
-                        onClick={() => handleGrade(autoGrade)}
-                        className={`text-sm font-medium px-6 py-2.5 rounded-lg text-white ${autoGrade === 'easy' ? 'bg-success' : 'bg-danger'}`}
-                    >
-                        Continue
-                    </button>
+                <div className="flex justify-between items-center mb-6 text-xs text-muted">
+                    <span>{queueIds.length} more due</span>
+                    <div className="flex gap-1">
+                        {Array.from({ length: Math.min(5, queueIds.length) }).map((_, i) => (
+                            <div key={i} className={`w-5 h-0.5 rounded-full ${i === 0 ? 'bg-accent' : 'bg-border'}`} />
+                        ))}
+                    </div>
+                    {current.hasAudio && (
+                        <button onClick={replayAudio} className="text-muted hover:text-ink">🔊 Replay</button>
+                    )}
                 </div>
-            )}
 
-            {isChecked && cardType !== 'cloze' && (
-                <div className="flex gap-3 justify-center mb-5">
-                    <button onClick={() => handleGrade('difficult')} className="px-6 py-2.5 rounded-lg text-sm font-medium bg-danger-soft text-danger-soft-text hover:opacity-80">
-                        Difficult
-                    </button>
-                    <button onClick={() => handleGrade('easy')} className="px-6 py-2.5 rounded-lg text-sm font-medium bg-success-soft text-success-soft-text hover:opacity-80">
-                        Easy
-                    </button>
+                {current.tags?.length > 0 && (
+                    <p className="text-center text-xs text-faint tracking-wide mb-2">{current.tags.join(' · ')}</p>
+                )}
+
+                <div className="bg-surface border border-border rounded-xl px-7 py-9 text-center mb-5">
+                    {cardType === 'cloze' ? (
+                        clozeResults === null ? (
+                            <ClozeCard phrase={current} onSubmitted={handleClozeSubmit} onPracticeWord={onPracticeWord} onFirstAction={onFirstAction} />
+                        ) : (
+                            <ClozeResult phrase={current} results={clozeResults} />
+                        )
+                    ) : (
+                        <div onClick={cardType === 'flip' ? handleCardTap : undefined} className={cardType === 'flip' ? 'cursor-pointer select-none' : ''}>
+                            <ClickableText text={current.text} onPracticeWord={onPracticeWord} />
+                            {cardType === 'input' ? (
+                                userAnswer === null ? (
+                                    <InputAnswer phraseId={current.id} onSubmitted={handleInputSubmit} />
+                                ) : (
+                                    <AnswerDiff userAnswer={userAnswer} correctAnswer={current.answer} />
+                                )
+                            ) : (
+                                <>
+                                    {revealed && <p className="text-lg text-muted mt-4 text-left max-w-md mx-auto">{current.answer}</p>}
+                                    {!revealed && <p className="text-xs text-faint mt-4 text-left max-w-md mx-auto">tap or press space to reveal</p>}
+                                </>
+                            )}
+                        </div>
+                    )}
                 </div>
-            )}
 
-            <div className="border-t border-border pt-3 flex justify-center gap-5 text-xs text-faint pb-6">
-                <span>e edit</span>
-                <span>k duplicate</span>
-                {history.length > 0 && <span>b back</span>}
+                {cardType === 'cloze' && clozeResults !== null && (
+                    <div className="flex justify-center mb-5">
+                        <button
+                            onClick={() => handleGrade(autoGrade)}
+                            className={`text-sm font-medium px-6 py-2.5 rounded-lg text-white ${autoGrade === 'easy' ? 'bg-success' : 'bg-danger'}`}
+                        >
+                            Continue
+                        </button>
+                    </div>
+                )}
+
+                {isChecked && cardType !== 'cloze' && (
+                    <div className="flex gap-3 justify-center mb-5">
+                        <button onClick={() => handleGrade('difficult')} className="px-6 py-2.5 rounded-lg text-sm font-medium bg-danger-soft text-danger-soft-text hover:opacity-80">
+                            Difficult
+                        </button>
+                        <button onClick={() => handleGrade('easy')} className="px-6 py-2.5 rounded-lg text-sm font-medium bg-success-soft text-success-soft-text hover:opacity-80">
+                            Easy
+                        </button>
+                    </div>
+                )}
+
+                <div className="border-t border-border pt-3 flex justify-center gap-5 text-xs text-faint">
+                    <span>e edit</span>
+                    <span>d duplicate</span>
+                    {history.length > 0 && <span>b back</span>}
+                </div>
             </div>
 
             <PhraseModal open={editingPhrase} existingPhrase={current} onClose={() => setEditingPhrase(false)} />
+            <PhraseModal
+                open={duplicatingPhrase}
+                duplicateFrom={current}
+                onClose={() => setDuplicatingPhrase(false)}
+            />
         </div>
     );
 }
