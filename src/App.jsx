@@ -6,6 +6,7 @@ import Login from './components/Login';
 import ReviewScreen from './features/review/ReviewScreen';
 import PhraseList from './features/phrases/PhraseList';
 import WordList from './features/words/WordList';
+import Login from './components/Login';
 import PhraseModal from './features/phrases/PhraseModal';
 import CustomStudyModal from './features/study/CustomStudyModal';
 import { isDue } from './lib/srs';
