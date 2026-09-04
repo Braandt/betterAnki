@@ -11,6 +11,16 @@ import WordEditorModal from '../words/WordEditorModal';
 import Field from '../../components/Field';
 import { getAllContexts } from '../../lib/contexts';
 
+const LAST_TYPE_KEY = 'betteranki:lastPhraseType';
+
+function getLastUsedType() {
+    return localStorage.getItem(LAST_TYPE_KEY) || 'cloze';
+}
+
+function saveLastUsedType(type) {
+    localStorage.setItem(LAST_TYPE_KEY, type);
+}
+
 function ExpressionHelper({ text, selectedExpressions, onChangeSelected }) {
     const { wordDict, addWord } = useApp();
     const [manualSelected, setManualSelected] = useState([]);
@@ -155,7 +165,7 @@ export default function PhraseModal({ open, onClose, existingPhrase = null, dupl
     const [phraseId, setPhraseId] = useState(null);
     const [text, setText] = useState('');
     const [answer, setAnswer] = useState('');
-    const [type, setType] = useState('cloze');
+    const [type, setType] = useState(getLastUsedType());
     const [tags, setTags] = useState([]);
     const [clozeIndices, setClozeIndices] = useState([]);
     const [showTranslationUpfront, setShowTranslationUpfront] = useState(true);
@@ -163,7 +173,7 @@ export default function PhraseModal({ open, onClose, existingPhrase = null, dupl
     const [audioAction, setAudioAction] = useState(null);
     const [expressions, setExpressions] = useState([]);
     const [context, setContext] = useState('');
-    const [direction, setDirection] = useState('recognition');
+    const [direction, setDirection] = useState('production');
 
     const canSubmit =
         text.trim() !== '' &&
@@ -180,7 +190,7 @@ export default function PhraseModal({ open, onClose, existingPhrase = null, dupl
         setPhraseId(id);
         setText(source?.text ?? '');
         setAnswer(source?.answer ?? '');
-        setType(source?.type ?? 'cloze');
+        setType(source?.type ?? getLastUsedType());
         setTags(source?.tags ?? []);
         setClozeIndices(source?.clozeIndices ?? []);
         setShowTranslationUpfront(source?.showTranslationUpfront ?? true);
@@ -188,7 +198,7 @@ export default function PhraseModal({ open, onClose, existingPhrase = null, dupl
         setExistingAudioUrl(null);
         setExpressions(existingPhrase?.expressions ?? []);
         setContext(source?.context ?? '');
-        setDirection(source?.direction ?? 'recognition');
+        setDirection(source?.direction ?? 'production');
 
         // Only preload existing audio when actually editing — a duplicate starts
         // with no audio, since re-using someone else's recording as-is rarely makes sense.
@@ -233,12 +243,13 @@ export default function PhraseModal({ open, onClose, existingPhrase = null, dupl
             showTranslationUpfront: type === 'cloze' ? showTranslationUpfront : false,
             expressions,
             context: context.trim(),
-            direction: type !== 'cloze' ? direction : 'recognition',
+            direction: type !== 'cloze' ? direction : 'production',
         };
 
         if (existingPhrase) {
             updatePhrase(existingPhrase.id, payload);
         } else {
+            saveLastUsedType(type);
             addPhrase({ id: phraseId, ...payload });
         }
         onClose();

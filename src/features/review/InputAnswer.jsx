@@ -17,7 +17,7 @@ export default function InputAnswer({ phraseId, onSubmitted }) {
     }
 
     return (
-        <form onSubmit={handleSubmit} className="flex flex-col gap-3 mx-4 mt-2">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-3 mt-2 px-4">
             <input
                 ref={inputRef}
                 value={value}

@@ -53,3 +53,9 @@ export function buildExpressionIndex(matches) {
     matches.forEach((m) => m.tokenIndices.forEach((idx) => map.set(idx, m)));
     return map;
 }
+
+export function resolveConfirmedExpressions(expressionKeys, wordDict) {
+    return (expressionKeys || [])
+        .map((key) => ({ key, entry: wordDict[key] }))
+        .filter((e) => e.entry);
+}

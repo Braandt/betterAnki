@@ -15,7 +15,7 @@ export function phraseFromDb(row) {
         createdAt: new Date(row.created_at).getTime(),
         expressions: row.expressions || [],
         context: row.context || '',
-        direction: row.direction || 'recognition',
+        direction: row.direction || 'production',
     };
 }
 

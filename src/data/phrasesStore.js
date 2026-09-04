@@ -9,7 +9,7 @@ export function createPhrase({
     showTranslationUpfront = false,
     expressions = [],
     context = '',
-    direction = 'recognition',
+    direction = 'production',
 }) {
     return {
         id,

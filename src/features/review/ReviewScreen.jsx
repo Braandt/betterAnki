@@ -11,6 +11,8 @@ import { phraseContainsWord } from '../../lib/phraseWords';
 import { useApp } from '../../context/AppContext';
 import { adjustMastery } from '../../lib/wordMastery';
 import AudioRecorder from '../../components/AudioRecorder';
+import ExpressionList from '../../components/ExpressionList';
+import { resolveConfirmedExpressions } from '../../lib/expressions';
 
 export default function ReviewScreen({
     phrases,
@@ -119,6 +121,8 @@ export default function ReviewScreen({
             return h.slice(0, -1);
         });
     }, [onGrade]);
+
+    const confirmedExpressions = current ? resolveConfirmedExpressions(current.expressions, wordDict) : [];
 
     // Audio autoplay
     useEffect(() => {
@@ -299,20 +303,27 @@ export default function ReviewScreen({
                             <ClozeResult phrase={current} results={clozeResults} onPracticeWord={onPracticeWord} />
                         )
                     ) : current.direction === 'production' ? (
-                        <div onClick={cardType === 'flip' ? handleCardTap : undefined} className={cardType === 'flip' ? 'cursor-pointer select-none mx-4' : 'mx-4'}>
-                            <p className="font-voice text-2xl leading-relaxed text-left text-ink">{current.answer}</p>
+                        <div onClick={cardType === 'flip' ? handleCardTap : undefined} className={cardType === 'flip' && 'cursor-pointer select-none mx-4'}>
+                            <p className="font-voice text-2xl leading-relaxed text-left text-ink px-4">{current.answer}</p>
 
                             {cardType === 'input' ? (
                                 userAnswer === null ? (
                                     <InputAnswer phraseId={current.id} onSubmitted={handleInputSubmit} />
                                 ) : (
-                                    <AnswerDiff userAnswer={userAnswer} correctAnswer={current.text} onPracticeWord={onPracticeWord} useWordLookup />
+                                    <AnswerDiff
+                                        userAnswer={userAnswer}
+                                        correctAnswer={current.text}
+                                        onPracticeWord={onPracticeWord}
+                                        useWordLookup
+                                        expressions={confirmedExpressions}
+                                    />
                                 )
                             ) : (
                                 <>
                                     {revealed ? (
                                         <div className="mt-4">
                                             <ClickableText text={current.text} onPracticeWord={onPracticeWord} confirmedExpressions={current.expressions ?? []} />
+                                            <ExpressionList expressions={confirmedExpressions} />
                                         </div>
                                     ) : (
                                         <div className="flex flex-col items-center gap-2 mt-4">
@@ -332,12 +343,21 @@ export default function ReviewScreen({
                                 userAnswer === null ? (
                                     <InputAnswer phraseId={current.id} onSubmitted={handleInputSubmit} />
                                 ) : (
-                                    <AnswerDiff userAnswer={userAnswer} correctAnswer={current.answer} onPracticeWord={onPracticeWord} />
+                                    <AnswerDiff
+                                        userAnswer={userAnswer}
+                                        correctAnswer={current.answer}
+                                        onPracticeWord={onPracticeWord}
+                                        expressions={confirmedExpressions}
+                                    />
                                 )
                             ) : (
                                 <>
                                     {revealed ? (
-                                        <p className="text-lg text-muted mt-4 text-left mx-4">{current.answer}</p>
+                                        <div className='mt-4 text-left mx-4'>
+                                            <p className="text-lg text-muted">{current.answer}</p>
+                                            <ExpressionList expressions={confirmedExpressions} />
+                                        </div>
+
                                     ) : (
                                         <div className="flex flex-col items-center gap-2 mt-4">
                                             <button onClick={(e) => { e.stopPropagation(); onFirstAction?.(); setRevealed(true); }} className="text-sm bg-accent text-white rounded-lg px-4 py-1.5 hover:bg-accent-hover">

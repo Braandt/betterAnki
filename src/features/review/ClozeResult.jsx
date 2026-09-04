@@ -5,7 +5,8 @@ import { useApp } from '../../context/AppContext';
 import WordEditorModal from '../words/WordEditorModal';
 import WordSpan from '../words/WordSpan';
 import ExpressionSpan from '../words/ExpressionSpan';
-import { findExpressionMatches, buildExpressionIndex } from '../../lib/expressions';
+import { findExpressionMatches, buildExpressionIndex, resolveConfirmedExpressions } from '../../lib/expressions';
+import ExpressionList from '../../components/ExpressionList';
 
 export default function ClozeResult({ phrase, results, onPracticeWord }) {
     const { wordDict, addWord } = useApp();
@@ -18,10 +19,12 @@ export default function ClozeResult({ phrase, results, onPracticeWord }) {
 
     const undefinedBlankedWords = [...new Set(results.map((r) => r.key))].filter((key) => !wordDict[key]);
 
+    const confirmedExpressions = resolveConfirmedExpressions(phrase.expressions, wordDict);
+
     return (
         <div className="flex flex-col gap-2 max-w-2xl">
             <span className={`text-xs font-medium self-center px-2.5 py-1 rounded-full ${allCorrect ? 'bg-success-soft text-success-soft-text' : 'bg-danger-soft text-danger-soft-text'}`}>
-                {allCorrect ? 'Correct' : 'Not quite'}
+                {allCorrect ? 'Correct' : 'Incorrect'}
             </span>
 
             <p className="text-2xl leading-relaxed text-left mx-4">
@@ -58,7 +61,8 @@ export default function ClozeResult({ phrase, results, onPracticeWord }) {
                 })}
             </p>
 
-            {phrase.answer && <p className="text-sm text-faint text-left mx-4">{phrase.answer}</p>}
+            {phrase.answer && <p className="italic text-faint mx-4">{phrase.answer}</p>}
+            <ExpressionList expressions={confirmedExpressions} />
 
             {undefinedBlankedWords.length > 0 && (
                 <div className="mt-2 flex flex-col items-center gap-1.5 border-t border-border pt-3 w-full">

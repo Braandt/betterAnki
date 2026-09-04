@@ -7,9 +7,6 @@ function isDesktopPointer() {
     return typeof window !== 'undefined' && window.matchMedia('(hover: hover) and (pointer: fine)').matches;
 }
 
-// `token`: the single word being rendered right now (its own position in the sentence)
-// `match`: { key, entry, tokenIndices } — the full expression this word belongs to
-// `allTokens`: full tokenize() output, used to look up the OTHER words' literal text/meaning
 export default function ExpressionSpan({ token, match, allTokens, onPracticeWord }) {
     const { wordDict, addWord, updateWord } = useApp();
     const [tooltipOpen, setTooltipOpen] = useState(false);
@@ -54,7 +51,7 @@ export default function ExpressionSpan({ token, match, allTokens, onPracticeWord
             >
                 <span
                     onClick={handleClick}
-                    className="cursor-pointer hover:bg-yellow-200 rounded px-0.5 underline decoration-wavy decoration-accent underline-offset-4"
+                    className="cursor-pointer hover:bg-yellow-200 rounded px-0.5 underline decoration-wavy decoration-accent underline-offset-8"
                 >
                     {token.text}
                 </span>
