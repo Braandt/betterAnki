@@ -2,7 +2,6 @@
 import { useEffect, useState } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import Sidebar from './components/Sidebar';
-import Login from './components/Login';
 import ReviewScreen from './features/review/ReviewScreen';
 import PhraseList from './features/phrases/PhraseList';
 import WordList from './features/words/WordList';
