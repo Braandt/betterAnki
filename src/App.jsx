@@ -131,6 +131,7 @@ function Home() {
                             onGrade={(phrase, newSrs, grade) => { updatePhrase(phrase.id, { srs: newSrs }); logReview(phrase.id, grade); }}
                             onPracticeWord={(key) => { setPrefillWords([key]); setShowCustomStudy(true); }}
                             onFirstAction={() => setFocusMode(true)}
+                            onAudioAdded={(phraseId) => updatePhrase(phraseId, { hasAudio: true })}
                         />
                     ))}
 

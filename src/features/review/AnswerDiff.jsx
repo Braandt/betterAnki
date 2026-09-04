@@ -1,14 +1,22 @@
-// features/review/AnswerDiff.jsx
 import { diffWords, isExactMatch } from '../../lib/compareAnswer';
+import WordSpan from '../words/WordSpan';
 
-export default function AnswerDiff({ userAnswer, correctAnswer }) {
+function toToken(text) {
+    return { text, key: text.toLowerCase().trim(), isWord: true };
+}
+
+export default function AnswerDiff({ userAnswer, correctAnswer, onPracticeWord, useWordLookup = false }) {
     const correct = isExactMatch(userAnswer, correctAnswer);
+    const renderWord = (text, className) =>
+        useWordLookup
+            ? <WordSpan token={toToken(text)} onPracticeWord={onPracticeWord} textClassName={className} />
+            : <span className={className}>{text}</span>;
 
     if (correct) {
         return (
-            <div className="flex flex-col items-center gap-2 mt-5">
-                <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-success-soft text-success-soft-text">Correct</span>
-                <p className="text-xl text-ink">{correctAnswer}</p>
+            <div className="flex flex-col gap-2 mt-5 mx-4">
+                <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-success-soft text-success-soft-text w-fit">Correct</span>
+                <p className="text-xl">{correctAnswer.split(' ').map((w, i) => <span key={i}>{renderWord(w, 'text-ink')}{' '}</span>)}</p>
             </div>
         );
     }
@@ -16,16 +24,24 @@ export default function AnswerDiff({ userAnswer, correctAnswer }) {
     const diff = diffWords(userAnswer, correctAnswer);
 
     return (
-        <div className="flex flex-col items-center gap-2 mt-5">
-            <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-danger-soft text-danger-soft-text">Not quite</span>
-            <p className="text-lg leading-relaxed text-left max-w-md mx-auto">
-                {diff.map((part, i) => {
-                    if (part.type === 'match') return <span key={i} className="text-success-soft-text">{part.text}{' '}</span>;
-                    if (part.type === 'wrong') return <span key={i} className="text-danger-soft-text line-through">{part.text}{' '}</span>;
-                    return <span key={i} className="text-faint underline">{part.text}{' '}</span>;
-                })}
-            </p>
-            <p className="text-sm text-faint text-left max-w-md mx-auto">correct answer: {correctAnswer}</p>
+        <div className="flex flex-col gap-3 mt-5 mx-4">
+            <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-danger-soft text-danger-soft-text w-fit">Not quite</span>
+            <div>
+                <p className="text-xs text-faint mb-1">Your answer</p>
+                <p className="text-lg leading-relaxed">
+                    {diff.filter((p) => p.type !== 'missing').map((p, i) =>
+                        <span key={i} className={p.type === 'wrong' ? 'text-danger-soft-text underline decoration-danger' : 'text-ink'}>{p.text}{' '}</span>
+                    )}
+                </p>
+            </div>
+            <div>
+                <p className="text-xs text-faint mb-1">Correct solution</p>
+                <p className="text-lg leading-relaxed">
+                    {diff.filter((p) => p.type !== 'wrong').map((p, i) =>
+                        <span key={i}>{renderWord(p.text, p.type === 'missing' ? 'text-success-soft-text font-semibold' : 'text-ink')}{' '}</span>
+                    )}
+                </p>
+            </div>
         </div>
     );
 }

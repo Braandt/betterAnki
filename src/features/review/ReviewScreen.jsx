@@ -10,6 +10,7 @@ import { isDue, schedule, DEFAULT_SRS } from '../../lib/srs';
 import { phraseContainsWord } from '../../lib/phraseWords';
 import { useApp } from '../../context/AppContext';
 import { adjustMastery } from '../../lib/wordMastery';
+import AudioRecorder from '../../components/AudioRecorder';
 
 export default function ReviewScreen({
     phrases,
@@ -20,8 +21,9 @@ export default function ReviewScreen({
     onExit,
     onPracticeWord,
     onFirstAction,
+    onAudioAdded
 }) {
-    const { getAudioUrl, wordDict, updateWord } = useApp();
+    const { getAudioUrl, wordDict, updateWord, saveAudio } = useApp();
 
     const [queueIds, setQueueIds] = useState(() =>
         phrases
@@ -41,7 +43,17 @@ export default function ReviewScreen({
     const [autoGrade, setAutoGrade] = useState(null); // grade computed automatically from cloze correctness
     const [editingPhrase, setEditingPhrase] = useState(false);
     const [duplicatingPhrase, setDuplicatingPhrase] = useState(false);
+    const [recordingAudio, setRecordingAudio] = useState(false);
+
     const currentAudioRef = useRef(null);
+
+    async function handleAudioRecorded(action) {
+        if (action.type === 'recorded') {
+            await saveAudio(current.id, action.blob, action.mimeType);
+            onAudioAdded?.(current.id);
+        }
+        setRecordingAudio(false);
+    }
 
     const current = phrases.find((p) => p.id === queueIds[0]) ?? null;
     const cardType = current?.type ?? 'flip';
@@ -108,7 +120,7 @@ export default function ReviewScreen({
         });
     }, [onGrade]);
 
-    // Audio autoplay — unchanged
+    // Audio autoplay
     useEffect(() => {
         let cancelled = false;
         let objectUrl = null;
@@ -133,6 +145,23 @@ export default function ReviewScreen({
             if (objectUrl) URL.revokeObjectURL(objectUrl);
         };
     }, [current?.id], cardType);
+
+    useEffect(() => {
+        if (cardType !== 'cloze' || clozeResults === null) return;
+        if (!current?.hasAudio) return;
+
+        let cancelled = false;
+        (async () => {
+            const url = await getAudioUrl(current.id);
+            if (url && !cancelled) {
+                const audio = new Audio(url);
+                currentAudioRef.current = audio;
+                audio.play().catch(() => { });
+            }
+        })();
+
+        return () => { cancelled = true; };
+    }, [clozeResults, cardType, current?.id, current?.hasAudio]);
 
     async function replayAudio() {
         if (!current?.hasAudio) return;
@@ -183,6 +212,16 @@ export default function ReviewScreen({
                 return;
             }
 
+            if (e.key === 'r' || e.key === 'R') {
+                e.preventDefault();
+                if (current?.hasAudio) {
+                    replayAudio();
+                } else if (isChecked) {
+                    setRecordingAudio(true);
+                }
+                return;
+            }
+
             if (e.code === 'Space') {
                 e.preventDefault();
                 if (cardType === 'flip') {
@@ -208,7 +247,7 @@ export default function ReviewScreen({
         }
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [cardType, revealed, isChecked, autoGrade, handleGrade, goBack]);
+    }, [cardType, revealed, isChecked, autoGrade, handleGrade, goBack, current?.hasAudio, replayAudio]);
 
     if (!current) {
         return (
@@ -244,34 +283,76 @@ export default function ReviewScreen({
                 </div>
 
                 {current.tags?.length > 0 && (
-                    <p className="text-center text-xs text-faint tracking-wide mb-2">{current.tags.join(' · ')}</p>
+                    <p className="text-xs text-faint tracking-wide mb-2">{current.tags.join(' · ')}</p>
                 )}
 
-                <div className="bg-surface border border-border rounded-xl px-7 py-9 text-center mb-5">
+                {/* CARD */}
+                <div className="bg-surface border border-border rounded-xl px-7 py-9 mb-5">
+                    {current.context && (
+                        <p className=" text-faint italic mb-4">{current.context}:</p>
+                    )}
+
                     {cardType === 'cloze' ? (
                         clozeResults === null ? (
                             <ClozeCard phrase={current} onSubmitted={handleClozeSubmit} onPracticeWord={onPracticeWord} onFirstAction={onFirstAction} />
                         ) : (
-                            <ClozeResult phrase={current} results={clozeResults} />
+                            <ClozeResult phrase={current} results={clozeResults} onPracticeWord={onPracticeWord} />
                         )
-                    ) : (
-                        <div onClick={cardType === 'flip' ? handleCardTap : undefined} className={cardType === 'flip' ? 'cursor-pointer select-none' : ''}>
-                            <ClickableText text={current.text} onPracticeWord={onPracticeWord} />
+                    ) : current.direction === 'production' ? (
+                        <div onClick={cardType === 'flip' ? handleCardTap : undefined} className={cardType === 'flip' ? 'cursor-pointer select-none mx-4' : 'mx-4'}>
+                            <p className="font-voice text-2xl leading-relaxed text-left text-ink">{current.answer}</p>
+
                             {cardType === 'input' ? (
                                 userAnswer === null ? (
                                     <InputAnswer phraseId={current.id} onSubmitted={handleInputSubmit} />
                                 ) : (
-                                    <AnswerDiff userAnswer={userAnswer} correctAnswer={current.answer} />
+                                    <AnswerDiff userAnswer={userAnswer} correctAnswer={current.text} onPracticeWord={onPracticeWord} useWordLookup />
                                 )
                             ) : (
                                 <>
-                                    {revealed && <p className="text-lg text-muted mt-4 text-left max-w-md mx-auto">{current.answer}</p>}
-                                    {!revealed && <p className="text-xs text-faint mt-4 text-left max-w-md mx-auto">tap or press space to reveal</p>}
+                                    {revealed ? (
+                                        <div className="mt-4">
+                                            <ClickableText text={current.text} onPracticeWord={onPracticeWord} confirmedExpressions={current.expressions ?? []} />
+                                        </div>
+                                    ) : (
+                                        <div className="flex flex-col items-center gap-2 mt-4">
+                                            <button onClick={(e) => { e.stopPropagation(); onFirstAction?.(); setRevealed(true); }} className="text-sm bg-accent text-white rounded-lg px-4 py-1.5 hover:bg-accent-hover">
+                                                Check
+                                            </button>
+                                            <p className="text-xs text-faint">tap card or press space to reveal</p>
+                                        </div>
+                                    )}
+                                </>
+                            )}
+                        </div>
+                    ) : (
+                        <div onClick={cardType === 'flip' ? handleCardTap : undefined} className={cardType === 'flip' ? 'cursor-pointer select-none' : ''}>
+                            <ClickableText text={current.text} onPracticeWord={onPracticeWord} confirmedExpressions={current.expressions ?? []} />
+                            {cardType === 'input' ? (
+                                userAnswer === null ? (
+                                    <InputAnswer phraseId={current.id} onSubmitted={handleInputSubmit} />
+                                ) : (
+                                    <AnswerDiff userAnswer={userAnswer} correctAnswer={current.answer} onPracticeWord={onPracticeWord} />
+                                )
+                            ) : (
+                                <>
+                                    {revealed ? (
+                                        <p className="text-lg text-muted mt-4 text-left mx-4">{current.answer}</p>
+                                    ) : (
+                                        <div className="flex flex-col items-center gap-2 mt-4">
+                                            <button onClick={(e) => { e.stopPropagation(); onFirstAction?.(); setRevealed(true); }} className="text-sm bg-accent text-white rounded-lg px-4 py-1.5 hover:bg-accent-hover">
+                                                Check
+                                            </button>
+                                            <p className="text-xs text-faint">tap card or press space to reveal</p>
+                                        </div>
+                                    )}
                                 </>
                             )}
                         </div>
                     )}
+
                 </div>
+                {/* CARD */}
 
                 {cardType === 'cloze' && clozeResults !== null && (
                     <div className="flex justify-center mb-5">
@@ -295,9 +376,26 @@ export default function ReviewScreen({
                     </div>
                 )}
 
-                <div className="border-t border-border pt-3 flex justify-center gap-5 text-xs text-faint">
+                {isChecked && !current.hasAudio && (
+                    <div className="flex flex-col items-center gap-2 mb-5">
+                        {!recordingAudio ? (
+                            <button onClick={() => setRecordingAudio(true)} className="text-xs text-muted underline">
+                                🎤 Add pronunciation recording
+                            </button>
+                        ) : (
+                            <AudioRecorder existingUrl={null} onChange={handleAudioRecorded} />
+                        )}
+                    </div>
+                )}
+
+                <div className="border-t border-border pt-3 flex justify-center gap-5 text-xs text-faint pb-6">
                     <span>e edit</span>
                     <span>d duplicate</span>
+                    {current.hasAudio ? (
+                        <span>r replay</span>
+                    ) : (
+                        isChecked && <span>r record</span>
+                    )}
                     {history.length > 0 && <span>b back</span>}
                 </div>
             </div>

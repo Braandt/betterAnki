@@ -8,7 +8,7 @@ function isDesktopPointer() {
         window.matchMedia('(hover: hover) and (pointer: fine)').matches;
 }
 
-export default function WordSpan({ token, onPracticeWord }) {
+export default function WordSpan({ token, onPracticeWord, textClassName }) {
     const { wordDict, addWord, updateWord } = useApp();
     const [tooltipOpen, setTooltipOpen] = useState(false);
     const [editing, setEditing] = useState(false);
@@ -51,16 +51,11 @@ export default function WordSpan({ token, onPracticeWord }) {
 
     return (
         <>
-            <span
-                ref={wrapperRef}
-                className="relative inline-block"
-                style={{ touchAction: 'manipulation' }}
-                onMouseEnter={() => setTooltipOpen(true)}
-                onMouseLeave={() => setTooltipOpen(false)}
-            >
+            <span ref={wrapperRef} className="relative inline-block" style={{ touchAction: 'manipulation' }}
+                onMouseEnter={() => setTooltipOpen(true)} onMouseLeave={() => setTooltipOpen(false)}>
                 <span
-                    className={`cursor-pointer hover:bg-yellow-200 rounded px-0.5 ${entry ? 'underline decoration-dotted decoration-gray-400 underline-offset-4' : ''
-                        } ${tooltipOpen && 'bg-gray-300'}`}
+                    className={`cursor-pointer hover:bg-yellow-200 rounded px-0.5 ${textClassName ?? (entry ? 'underline decoration-dotted decoration-gray-400 underline-offset-4' : '')
+                        }`}
                     onClick={handleWordClick}
                 >
                     {token.text}

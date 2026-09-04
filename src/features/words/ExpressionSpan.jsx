@@ -62,7 +62,10 @@ export default function ExpressionSpan({ token, match, allTokens, onPracticeWord
                 {tooltipOpen && (
                     <span className="absolute left-1/2 -translate-x-1/2 top-full pt-1 z-10">
                         <span className="block w-max max-w-xs rounded bg-gray-800 text-white text-sm px-3 py-2 shadow-lg text-left flex flex-col gap-1.5">
-                            <span className="text-xs text-accent-soft font-medium uppercase tracking-wide">Expression: {match.key}</span>
+                            <span className="text-xs text-accent-soft font-medium tracking-wide">
+                                Expression:
+                                <span className='uppercase'> {match.key}</span>
+                            </span>
                             <span>{match.entry.definition}</span>
                             {match.entry.notes && (
                                 <span className="text-gray-300 text-xs border-t border-gray-600 pt-1 whitespace-pre-line">

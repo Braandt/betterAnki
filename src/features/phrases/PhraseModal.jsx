@@ -8,73 +8,114 @@ import { tokenize } from '../../lib/tokenize';
 import { useApp } from '../../context/AppContext';
 import { findExpressionMatches } from '../../lib/expressions';
 import WordEditorModal from '../words/WordEditorModal';
+import Field from '../../components/Field';
+import { getAllContexts } from '../../lib/contexts';
 
-function ExpressionHelper({ text }) {
+function ExpressionHelper({ text, selectedExpressions, onChangeSelected }) {
     const { wordDict, addWord } = useApp();
-    const [selected, setSelected] = useState([]);
+    const [manualSelected, setManualSelected] = useState([]);
+    const [showPicker, setShowPicker] = useState(false);
     const [showEditor, setShowEditor] = useState(false);
+    const [hoveredKey, setHoveredKey] = useState(null);
     const tokens = tokenize(text);
-    const matches = findExpressionMatches(tokens, wordDict);
+    const candidates = findExpressionMatches(tokens, wordDict);
 
-    function toggle(i) {
-        setSelected((prev) => (prev.includes(i) ? prev.filter((x) => x !== i) : [...prev, i].sort((a, b) => a - b)));
+    function toggleCandidate(key) {
+        onChangeSelected(
+            selectedExpressions.includes(key)
+                ? selectedExpressions.filter((k) => k !== key)
+                : [...selectedExpressions, key]
+        );
     }
 
-    const selectedKey = selected.length >= 2 ? selected.map((i) => tokens[i].key).join(' ') : null;
-    const alreadyExists = selectedKey && wordDict[selectedKey];
+    function toggleManualWord(i) {
+        setManualSelected((prev) => (prev.includes(i) ? prev.filter((x) => x !== i) : [...prev, i].sort((a, b) => a - b)));
+    }
+
+    const manualKey = manualSelected.length >= 2 ? manualSelected.map((i) => tokens[i].key).join(' ') : null;
+    const manualAlreadyExists = manualKey && wordDict[manualKey];
+    const hoveredIndices = new Set(candidates.find((c) => c.key === hoveredKey)?.tokenIndices ?? []);
 
     if (!text.trim()) return null;
 
     return (
         <div className="flex flex-col gap-2">
-            {matches.length > 0 && (
-                <div>
-                    <p className="text-xs text-faint mb-1">Expressions recognized:</p>
-                    <div className="flex flex-wrap gap-1.5">
-                        {matches.map((m) => (
-                            <span key={m.key} className="text-xs bg-accent-soft text-accent-soft-text px-2 py-0.5 rounded-full">
-                                {m.key}
-                            </span>
+            {candidates.length > 0 && (
+                <Field label="Recognized expressions — select which are actually used">
+                    <div className="flex flex-col gap-1">
+                        {candidates.map((c) => (
+                            <label
+                                key={c.key}
+                                onMouseEnter={() => setHoveredKey(c.key)}
+                                onMouseLeave={() => setHoveredKey(null)}
+                                className="flex items-center gap-2 text-sm cursor-pointer"
+                            >
+                                <input
+                                    type="checkbox"
+                                    checked={selectedExpressions.includes(c.key)}
+                                    onChange={() => toggleCandidate(c.key)}
+                                />
+                                <span className="text-ink">{c.key}</span>
+                                <span className="text-muted text-xs">— {c.entry.definition}</span>
+                            </label>
                         ))}
                     </div>
-                </div>
+                </Field>
             )}
 
-            <div>
-                <p className="text-xs text-faint mb-1">Click 2+ words to mark a new expression:</p>
-                <p className="border rounded px-3 py-2 bg-gray-50 leading-relaxed">
-                    {tokens.map((t, i) =>
-                        !t.isWord ? (
-                            <span key={i}>{t.text}</span>
-                        ) : (
-                            <span
-                                key={i}
-                                onClick={() => toggle(i)}
-                                className={`cursor-pointer rounded px-0.5 ${selected.includes(i) ? 'bg-accent text-white' : 'hover:bg-yellow-200'}`}
-                            >
-                                {t.text}
-                            </span>
-                        )
-                    )}
-                </p>
-            </div>
-
-            {selectedKey && (
-                <button
-                    type="button"
-                    onClick={() => setShowEditor(true)}
-                    disabled={!!alreadyExists}
-                    className="text-sm text-accent underline disabled:text-faint disabled:no-underline w-fit"
-                >
-                    {alreadyExists ? `"${selectedKey}" already defined` : `+ Add "${selectedKey}" as expression`}
+            {!showPicker ? (
+                <button type="button" onClick={() => setShowPicker(true)} className="text-sm text-accent underline w-fit">
+                    + Define a new expression from this phrase
                 </button>
+            ) : (
+                <Field label="Click 2+ words to define a new expression">
+                    <p className="border rounded px-3 py-2 bg-gray-50 leading-relaxed">
+                        {tokens.map((t, i) =>
+                            !t.isWord ? (
+                                <span key={i}>{t.text}</span>
+                            ) : (
+                                <span
+                                    key={i}
+                                    onClick={() => toggleManualWord(i)}
+                                    className={`cursor-pointer rounded px-0.5 ${manualSelected.includes(i) ? 'bg-accent text-white' :
+                                        hoveredIndices.has(i) ? 'bg-yellow-200' : 'hover:bg-yellow-200'
+                                        }`}
+                                >
+                                    {t.text}
+                                </span>
+                            )
+                        )}
+                    </p>
+                    <div className="flex items-center gap-3 mt-1">
+                        {manualKey && (
+                            <button
+                                type="button"
+                                onClick={() => setShowEditor(true)}
+                                disabled={!!manualAlreadyExists}
+                                className="text-sm text-accent underline disabled:text-faint disabled:no-underline w-fit"
+                            >
+                                {manualAlreadyExists ? `"${manualKey}" already defined` : `+ Add "${manualKey}" as expression`}
+                            </button>
+                        )}
+                        <button
+                            type="button"
+                            onClick={() => { setShowPicker(false); setManualSelected([]); }}
+                            className="text-sm text-muted underline w-fit"
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                </Field>
             )}
 
             <WordEditorModal
-                wordKey={showEditor ? selectedKey : null}
+                wordKey={showEditor ? manualKey : null}
                 existing={null}
-                onSave={({ definition, notes }) => addWord({ text: selectedKey, definition, notes })}
-                onClose={() => { setShowEditor(false); setSelected([]); }}
+                onSave={({ definition, notes }) => {
+                    addWord({ text: manualKey, definition, notes });
+                    onChangeSelected([...selectedExpressions, manualKey]);
+                }}
+                onClose={() => { setShowEditor(false); setManualSelected([]); setShowPicker(false); }}
             />
         </div>
     );
@@ -120,12 +161,16 @@ export default function PhraseModal({ open, onClose, existingPhrase = null, dupl
     const [showTranslationUpfront, setShowTranslationUpfront] = useState(true);
     const [existingAudioUrl, setExistingAudioUrl] = useState(null);
     const [audioAction, setAudioAction] = useState(null);
+    const [expressions, setExpressions] = useState([]);
+    const [context, setContext] = useState('');
+    const [direction, setDirection] = useState('recognition');
 
     const canSubmit =
         text.trim() !== '' &&
         (type === 'cloze' ? clozeIndices.length > 0 : answer.trim() !== '');
 
     const allTags = getAllTags(phrases);
+    const allContexts = getAllContexts(phrases);
     const source = existingPhrase ?? duplicateFrom; // whichever one supplies the pre-fill data
 
     useEffect(() => {
@@ -141,6 +186,9 @@ export default function PhraseModal({ open, onClose, existingPhrase = null, dupl
         setShowTranslationUpfront(source?.showTranslationUpfront ?? true);
         setAudioAction(null);
         setExistingAudioUrl(null);
+        setExpressions(existingPhrase?.expressions ?? []);
+        setContext(source?.context ?? '');
+        setDirection(source?.direction ?? 'recognition');
 
         // Only preload existing audio when actually editing — a duplicate starts
         // with no audio, since re-using someone else's recording as-is rarely makes sense.
@@ -181,7 +229,11 @@ export default function PhraseModal({ open, onClose, existingPhrase = null, dupl
             tags,
             clozeIndices: type === 'cloze' ? clozeIndices : [],
             hasAudio,
+            audioExt,
             showTranslationUpfront: type === 'cloze' ? showTranslationUpfront : false,
+            expressions,
+            context: context.trim(),
+            direction: type !== 'cloze' ? direction : 'recognition',
         };
 
         if (existingPhrase) {
@@ -211,36 +263,68 @@ export default function PhraseModal({ open, onClose, existingPhrase = null, dupl
                     </button>
                 </div>
 
-                <input
-                    autoFocus
-                    value={text}
-                    onChange={handleTextChange}
-                    placeholder="Phrase (e.g. Jeg spiste frokost.)"
-                    className="border rounded px-3 py-2"
-                />
+                <Field label="Context (optional)">
+                    <input
+                        list="context-options"
+                        value={context}
+                        onChange={(e) => setContext(e.target.value)}
+                        className="border rounded px-3 py-2 text-sm"
+                    />
+                    <datalist id="context-options">
+                        {allContexts.map((c) => (
+                            <option key={c} value={c} />
+                        ))}
+                    </datalist>
+                </Field>
 
-                <ExpressionHelper text={text} />
+                <Field label="Phrase">
+                    <input
+                        autoFocus
+                        value={text}
+                        onChange={handleTextChange}
+                        className="border rounded px-3 py-2"
+                    />
+                </Field>
+
+                <ExpressionHelper text={text} selectedExpressions={expressions} onChangeSelected={setExpressions} />
 
                 {type === 'cloze' ? (
                     <>
                         <ClozeWordPicker text={text} selected={clozeIndices} onToggle={toggleClozeIndex} />
-                        <input value={answer} onChange={(e) => setAnswer(e.target.value)} placeholder="Translation (optional)" className="border rounded px-3 py-2" />
+                        <Field label="Translation (optional)">
+                            <input value={answer} onChange={(e) => setAnswer(e.target.value)} className="border rounded px-3 py-2" />
+                        </Field>
                         <label className="flex items-center gap-2 text-sm text-gray-600">
-                            <input
-                                type="checkbox"
-                                checked={showTranslationUpfront}
-                                onChange={(e) => setShowTranslationUpfront(e.target.checked)}
-                            />
+                            <input type="checkbox" checked={showTranslationUpfront} onChange={(e) => setShowTranslationUpfront(e.target.checked)} />
                             Show hints before answering (word definition + translation)
                         </label>
                     </>
                 ) : (
-                    <input value={answer} onChange={(e) => setAnswer(e.target.value)} placeholder="Answer / translation" className="border rounded px-3 py-2" />
+                    <>
+                        <Field label="Answer / translation">
+                            <input value={answer} onChange={(e) => setAnswer(e.target.value)} className="border rounded px-3 py-2" />
+                        </Field>
+
+                        <Field label="Direction">
+                            <div className="flex gap-2">
+                                <button type="button" onClick={() => setDirection('recognition')} className={`flex-1 px-3 py-2 rounded text-sm border ${direction === 'recognition' ? 'bg-accent text-white border-accent' : 'text-muted border-border'}`}>
+                                    Norwegian → English
+                                </button>
+                                <button type="button" onClick={() => setDirection('production')} className={`flex-1 px-3 py-2 rounded text-sm border ${direction === 'production' ? 'bg-accent text-white border-accent' : 'text-muted border-border'}`}>
+                                    English → Norwegian
+                                </button>
+                            </div>
+                        </Field>
+                    </>
                 )}
 
-                <TagInput tags={tags} onChange={setTags} suggestions={allTags} placeholder="Add tags..." />
+                <Field label="Tags">
+                    <TagInput tags={tags} onChange={setTags} suggestions={allTags} placeholder="Add tags..." />
+                </Field>
 
-                <AudioRecorder existingUrl={existingAudioUrl} onChange={setAudioAction} />
+                <Field label="Pronunciation">
+                    <AudioRecorder existingUrl={existingAudioUrl} onChange={setAudioAction} />
+                </Field>
 
                 <div className="flex justify-end gap-2 mt-2">
                     <button type="button" onClick={onClose} className="px-3 py-1.5 text-gray-500">

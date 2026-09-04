@@ -55,8 +55,8 @@ export default function ClozeCard({ phrase, onSubmitted, onPracticeWord, onFirst
     const clozeIndices = phrase.clozeIndices || [];
     const blankedSet = new Set(clozeIndices);
     const allExpressionMatches = findExpressionMatches(tokens, wordDict);
-
-    const expressionIndex = buildExpressionIndex(allExpressionMatches);
+    const confirmedMatches = allExpressionMatches.filter((m) => (phrase.expressions ?? []).includes(m.key));
+    const expressionIndex = buildExpressionIndex(confirmedMatches);
 
     const [values, setValues] = useState(() => clozeIndices.map(() => ''));
     const [phase, setPhase] = useState('answering');
@@ -184,8 +184,8 @@ export default function ClozeCard({ phrase, onSubmitted, onPracticeWord, onFirst
     );
 
     return (
-        <div className="flex flex-col items-center gap-3 max-w-2xl">
-            <p className="font-voice text-2xl leading-relaxed text-left text-ink max-w-md mx-auto">
+        <div className="flex flex-col gap-3 mx-4">
+            <p className="font-voice text-2xl leading-relaxed text-left text-ink">
                 {tokens.map((token, i) => {
                     const blankPos = clozeIndices.indexOf(i);
                     if (blankPos !== -1) {
@@ -227,21 +227,21 @@ export default function ClozeCard({ phrase, onSubmitted, onPracticeWord, onFirst
             </p>
 
             {phase === 'correcting' && (
-                <p className="text-sm text-danger-soft-text text-left max-w-md mx-auto">Type the correct word(s) to continue</p>
+                <p className="text-sm bg-danger-soft text-danger-soft-text text-left max-w-md">Type the correct word(s) to continue</p>
             )}
 
             {wordHints.length > 0 && (
-                <div className="flex flex-col gap-0.5 text-left max-w-md mx-auto w-full">
+                <div className="flex flex-col gap-0.5 text-left max-w-md w-full mt-2">
                     {wordHints.map((hint, i) => <p key={i} className="text-sm text-muted">{hint}</p>)}
                 </div>
             )}
 
             {phrase.showTranslationUpfront && phrase.answer && (
-                <p className="text-sm text-faint italic text-left w-full max-w-md mx-auto self-stretch">{phrase.answer}</p>
+                <p className="text-faint italic text-left w-full">{phrase.answer}</p>
             )}
 
             {phase === 'answering' ? (
-                <button onClick={handleCheck} className="text-sm bg-accent text-white rounded-lg px-4 py-1.5 mt-1 hover:bg-accent-hover">
+                <button onClick={handleCheck} className="self-center text-sm bg-accent text-white rounded-lg px-4 py-1.5 mt-1 hover:bg-accent-hover">
                     Check
                 </button>
             ) : (

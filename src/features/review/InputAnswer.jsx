@@ -1,12 +1,10 @@
 // features/review/InputAnswer.jsx
 import { useState, useEffect, useRef } from 'react';
-import { diffWords, isExactMatch } from '../../lib/compareAnswer';
 
 export default function InputAnswer({ phraseId, onSubmitted }) {
     const [value, setValue] = useState('');
     const inputRef = useRef(null);
 
-    // Focus the input whenever a new card loads
     useEffect(() => {
         setValue('');
         inputRef.current?.focus();
@@ -19,16 +17,28 @@ export default function InputAnswer({ phraseId, onSubmitted }) {
     }
 
     return (
-        <form onSubmit={handleSubmit} className="flex flex-col items-center gap-3 w-full max-w-md">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-3 mx-4 mt-2">
             <input
                 ref={inputRef}
                 value={value}
                 onChange={(e) => setValue(e.target.value)}
                 placeholder="Type the answer..."
-                className="border-0 border-b-2 border-border-strong bg-transparent text-center text-lg w-full max-w-xs mx-auto outline-none py-1 text-ink focus:border-accent"
-                autoComplete="off" autoCorrect="off" spellCheck="false"
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck="false"
+                className="border-0 border-b-2 border-border-strong bg-transparent text-lg w-full outline-none py-1 text-ink focus:border-accent placeholder:text-faint placeholder:italic"
             />
-            <p className="text-xs text-faint mt-3">press enter to check</p>
+            <div className="flex justify-center mt-2">
+                <button
+                    type="submit"
+                    disabled={!value.trim()}
+                    className="text-sm bg-accent text-white rounded-lg px-4 py-1.5 hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                    Check
+                </button>
+            </div>
+            <p className="text-xs text-faint text-center">press enter to check</p>
         </form>
     );
 }

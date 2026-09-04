@@ -13,6 +13,9 @@ export function phraseFromDb(row) {
         srs: row.srs,
         audioExt: row.audio_ext || 'webm',
         createdAt: new Date(row.created_at).getTime(),
+        expressions: row.expressions || [],
+        context: row.context || '',
+        direction: row.direction || 'recognition',
     };
 }
 
@@ -27,6 +30,9 @@ export function phraseToDb(phrase) {
         show_translation_upfront: phrase.showTranslationUpfront,
         srs: phrase.srs,
         audio_ext: phrase.audioExt,
+        expressions: phrase.expressions,
+        context: phrase.context,
+        direction: phrase.direction,
     };
 }
 

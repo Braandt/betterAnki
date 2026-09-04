@@ -7,6 +7,7 @@ import { tokenize } from '../../lib/tokenize';
 import PhraseModal from './PhraseModal';
 import { relativeTime } from '../../lib/relativeTime';
 import { findExpressionMatches } from '../../lib/expressions';
+import { getAllContexts } from '../../lib/contexts';
 
 const STATUS_FILTERS = ['All', 'Due', 'New', 'Learned'];
 
@@ -19,7 +20,8 @@ function statusOf(p) {
 function PhraseDetailPanel({ phrase, onBack, onEdit, onDelete, onPractice }) {
     const { wordDict } = useApp();
     const tokens = tokenize(phrase.text);
-    const expressionMatches = findExpressionMatches(tokens, wordDict);
+    const allMatches = findExpressionMatches(tokens, wordDict);
+    const expressionMatches = allMatches.filter((m) => (phrase.expressions ?? []).includes(m.key));
 
     // Words not covered by any recognized expression — same "individual word" list as before
     const coveredIndices = new Set();
@@ -40,6 +42,7 @@ function PhraseDetailPanel({ phrase, onBack, onEdit, onDelete, onPractice }) {
 
             <p className="font-voice text-2xl text-ink mb-1">{phrase.text}</p>
             {phrase.answer && <p className="text-sm text-muted mb-3">{phrase.answer}</p>}
+            {phrase.context && <p className="text-xs text-faint italic mb-3">{phrase.context}</p>}
             <span className={`text-xs px-2 py-0.5 rounded-full ${statusStyle}`}>{status}</span>
 
             <div className="border-t border-border mt-5 pt-4">
@@ -99,15 +102,22 @@ export default function PhraseList({ onPractice }) {
     const [status, setStatus] = useState('All');
     const [selected, setSelected] = useState(null);
     const [editingPhrase, setEditingPhrase] = useState(null);
+    const [context, setContext] = useState('');
+    const allContexts = getAllContexts(phrases);
 
     const filtered = useMemo(() => {
         const q = search.toLowerCase().trim();
         return phrases.filter((p) => {
-            const matchesSearch = !q || p.text.toLowerCase().includes(q) || p.answer.toLowerCase().includes(q);
+            const matchesSearch =
+                !q ||
+                p.text.toLowerCase().includes(q) ||
+                p.answer.toLowerCase().includes(q) ||
+                (p.context || '').toLowerCase().includes(q);
             const matchesStatus = status === 'All' || statusOf(p) === status;
-            return matchesSearch && matchesStatus;
+            const matchesContext = context === '' || p.context === context;
+            return matchesSearch && matchesStatus && matchesContext;
         });
-    }, [phrases, search, status]);
+    }, [phrases, search, status, context]);
 
     if (selected) {
         const phrase = phrases.find((p) => p.id === selected.id) ?? selected;
@@ -150,6 +160,28 @@ export default function PhraseList({ onPractice }) {
                     </button>
                 ))}
             </div>
+
+            {allContexts.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mb-4">
+                    <button
+                        onClick={() => setContext('')}
+                        className={`text-xs px-2.5 py-1 rounded-full border ${context === '' ? 'bg-ink text-white border-ink' : 'text-muted border-border hover:bg-surface-sunken'
+                            }`}
+                    >
+                        All contexts
+                    </button>
+                    {allContexts.map((c) => (
+                        <button
+                            key={c}
+                            onClick={() => setContext(c)}
+                            className={`text-xs px-2.5 py-1 rounded-full border ${context === c ? 'bg-ink text-white border-ink' : 'text-muted border-border hover:bg-surface-sunken'
+                                }`}
+                        >
+                            {c}
+                        </button>
+                    ))}
+                </div>
+            )}
 
             {filtered.length === 0 && <p className="text-muted text-sm">No phrases found.</p>}
 
