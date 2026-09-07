@@ -13,6 +13,7 @@ import { adjustMastery } from '../../lib/wordMastery';
 import AudioRecorder from '../../components/AudioRecorder';
 import ExpressionList from '../../components/ExpressionList';
 import { resolveConfirmedExpressions } from '../../lib/expressions';
+import { buildAutoClozeFromMistake } from '../../lib/autoCloze';
 
 export default function ReviewScreen({
     phrases,
@@ -46,6 +47,7 @@ export default function ReviewScreen({
     const [editingPhrase, setEditingPhrase] = useState(false);
     const [duplicatingPhrase, setDuplicatingPhrase] = useState(false);
     const [recordingAudio, setRecordingAudio] = useState(false);
+    const [extraPhrases, setExtraPhrases] = useState({}); // id -> ephemeral phrase, not persisted
 
     const currentAudioRef = useRef(null);
 
@@ -57,7 +59,7 @@ export default function ReviewScreen({
         setRecordingAudio(false);
     }
 
-    const current = phrases.find((p) => p.id === queueIds[0]) ?? null;
+    const current = extraPhrases[queueIds[0]] ?? phrases.find((p) => p.id === queueIds[0]) ?? null;
     const cardType = current?.type ?? 'flip';
 
     const isChecked =
@@ -68,29 +70,52 @@ export default function ReviewScreen({
     const handleGrade = useCallback(
         (grade) => {
             if (!current) return;
-            const prevSrs = current.srs ?? DEFAULT_SRS;
-            const newSrs = schedule(prevSrs, grade);
+            const isEphemeral = !!extraPhrases[current.id];
 
-            setHistory((h) => [...h, { queueIdsBefore: queueIds, phrase: current, prevSrs }]);
-
-            onGrade?.(current, newSrs, grade);
+            if (!isEphemeral) {
+                const prevSrs = current.srs ?? DEFAULT_SRS;
+                const newSrs = schedule(prevSrs, grade);
+                setHistory((h) => [...h, { queueIdsBefore: queueIds, phrase: current, prevSrs }]);
+                onGrade?.(current, newSrs, grade);
+            }
 
             setQueueIds((ids) => {
                 const rest = ids.slice(1);
-                return grade === 'difficult' ? [...rest, current.id] : rest;
+                if (isEphemeral) return rest;
+
+                if (grade === 'difficult') {
+                    // Reinsert a handful of cards ahead, not at the very back — brings
+                    // it back within the session after a short gap, rather than only
+                    // once every other due card has been seen.
+                    const MIN_GAP = 3;
+                    const MAX_GAP = 7;
+                    const gap = Math.min(rest.length, MIN_GAP + Math.floor(Math.random() * (MAX_GAP - MIN_GAP + 1)));
+                    return [...rest.slice(0, gap), current.id, ...rest.slice(gap)];
+                }
+
+                return rest;
             });
+
             setRevealed(false);
             setUserAnswer(null);
             setClozeResults(null);
             setAutoGrade(null);
         },
-        [current, onGrade, queueIds]
+        [current, onGrade, queueIds, extraPhrases]
     );
 
     const handleInputSubmit = useCallback((value) => {
         onFirstAction?.();
         setUserAnswer(value);
-    }, [onFirstAction]);
+
+        if (current?.direction === 'production') {
+            const autoCloze = buildAutoClozeFromMistake(current, value);
+            if (autoCloze) {
+                setExtraPhrases((prev) => ({ ...prev, [autoCloze.id]: autoCloze }));
+                setQueueIds((ids) => [ids[0], autoCloze.id, ...ids.slice(1)]);
+            }
+        }
+    }, [current, onFirstAction]);
 
     const handleClozeSubmit = useCallback((results) => {
         setClozeResults(results);

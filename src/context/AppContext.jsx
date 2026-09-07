@@ -114,6 +114,27 @@ export function AppProvider({ children }) {
         return data.signedUrl;
     }
 
+    async function saveWordAudio(wordId, blob, mimeType = 'audio/webm') {
+        const ext = extensionForMimeType(mimeType);
+        const { error } = await supabase.storage
+            .from('audio')
+            .upload(`word-${wordId}.${ext}`, blob, { upsert: true, contentType: mimeType });
+        if (error) throw error;
+        return ext;
+    }
+
+    async function removeWordAudio(wordId, ext = 'webm') {
+        await supabase.storage.from('audio').remove([`word-${wordId}.${ext}`]);
+    }
+
+    async function getWordAudioUrl(wordId, ext = 'webm') {
+        const { data, error } = await supabase.storage
+            .from('audio')
+            .createSignedUrl(`word-${wordId}.${ext}`, 60 * 60);
+        if (error) return null;
+        return data.signedUrl;
+    }
+
     async function logReview(phraseId, grade) {
         await supabase.from('review_log').insert({ phrase_id: phraseId, grade });
     }
@@ -164,7 +185,10 @@ export function AppProvider({ children }) {
         removeAudio,
         getAudioUrl,
         logReview,
-        getReviewHistory
+        getReviewHistory,
+        saveWordAudio,
+        getWordAudioUrl,
+        removeWordAudio
     };
 
     return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

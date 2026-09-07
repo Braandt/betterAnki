@@ -42,6 +42,12 @@ export function wordFromDb(row) {
         text: row.text,
         definition: row.definition,
         notes: row.notes,
+        partOfSpeech: row.part_of_speech || '',
+        forms: row.forms || {},
+        extraSenses: row.extra_senses || [],
+        topicTags: row.topic_tags || [],
+        hasAudio: row.has_audio,
+        audioExt: row.audio_ext || 'webm',
         mastery: row.mastery || { score: 50, correct: 0, wrong: 0 },
         createdAt: new Date(row.created_at).getTime(),
     };
@@ -52,6 +58,12 @@ export function wordToDb(word) {
         text: word.text,
         definition: word.definition,
         notes: word.notes,
+        part_of_speech: word.partOfSpeech,
+        forms: word.forms,
+        extra_senses: word.extraSenses,
+        topic_tags: word.topicTags,
+        has_audio: word.hasAudio,
+        audio_ext: word.audioExt,
         mastery: word.mastery,
     };
 }

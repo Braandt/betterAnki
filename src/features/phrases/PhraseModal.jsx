@@ -121,8 +121,8 @@ function ExpressionHelper({ text, selectedExpressions, onChangeSelected }) {
             <WordEditorModal
                 wordKey={showEditor ? manualKey : null}
                 existing={null}
-                onSave={({ definition, notes }) => {
-                    addWord({ text: manualKey, definition, notes });
+                onSave={(updates) => {
+                    addWord({ text: manualKey, ...updates });
                     onChangeSelected([...selectedExpressions, manualKey]);
                 }}
                 onClose={() => { setShowEditor(false); setManualSelected([]); setShowPicker(false); }}

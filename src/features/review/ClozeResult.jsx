@@ -84,7 +84,7 @@ export default function ClozeResult({ phrase, results, onPracticeWord }) {
             <WordEditorModal
                 wordKey={addingKey}
                 existing={null}
-                onSave={({ definition, notes }) => addWord({ text: addingKey, definition, notes })}
+                onSave={(updates) => addWord({ text: addingKey, ...updates })}
                 onClose={() => setAddingKey(null)}
             />
         </div>

@@ -27,11 +27,11 @@ export default function WordSpan({ token, onPracticeWord, textClassName }) {
         return () => document.removeEventListener('pointerdown', handleOutside);
     }, [tooltipOpen]);
 
-    function handleSave({ definition, notes }) {
+    function handleSave(updates) {
         if (entry) {
-            updateWord(entry.id, { definition, notes });
+            updateWord(entry.id, updates);
         } else {
-            addWord({ text: token.key, definition, notes });
+            addWord({ text: token.key, ...updates });
         }
     }
 
@@ -54,7 +54,7 @@ export default function WordSpan({ token, onPracticeWord, textClassName }) {
             <span ref={wrapperRef} className="relative inline-block" style={{ touchAction: 'manipulation' }}
                 onMouseEnter={() => setTooltipOpen(true)} onMouseLeave={() => setTooltipOpen(false)}>
                 <span
-                    className={`cursor-pointer hover:bg-yellow-200 rounded px-0.5 ${textClassName ?? (entry ? 'underline decoration-dotted decoration-gray-400 underline-offset-4' : '')
+                    className={`cursor-pointer hover:bg-yellow-200 rounded px-0.5 ${textClassName ?? (entry ? '' : 'underline decoration-dotted decoration-gray-400 underline-offset-4')
                         }`}
                     onClick={handleWordClick}
                 >

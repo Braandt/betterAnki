@@ -22,10 +22,10 @@ export default function ExpressionSpan({ token, match, allTokens, onPracticeWord
         return () => document.removeEventListener('pointerdown', handleOutside);
     }, [tooltipOpen]);
 
-    function handleSave({ definition, notes }) {
+    function handleSave(updates) {
         const existing = wordDict[editingKey];
-        if (existing) updateWord(existing.id, { definition, notes });
-        else addWord({ text: editingKey, definition, notes });
+        if (existing) updateWord(existing.id, updates);
+        else addWord({ text: editingKey, ...updates });
     }
 
     function handleClick(e) {
