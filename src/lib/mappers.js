@@ -48,6 +48,7 @@ export function wordFromDb(row) {
         topicTags: row.topic_tags || [],
         hasAudio: row.has_audio,
         audioExt: row.audio_ext || 'webm',
+        flagged: row.flagged || false,
         mastery: row.mastery || { score: 50, correct: 0, wrong: 0 },
         createdAt: new Date(row.created_at).getTime(),
     };
@@ -65,5 +66,6 @@ export function wordToDb(word) {
         has_audio: word.hasAudio,
         audio_ext: word.audioExt,
         mastery: word.mastery,
+        flagged: word.flagged,
     };
 }

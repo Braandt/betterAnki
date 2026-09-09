@@ -47,6 +47,6 @@ export function buildAutoClozeFromMistake(phrase, userAnswer) {
         clozeIndices,
         context: phrase.context,
         expressions: phrase.expressions,
-        showTranslationUpfront: false,
+        showTranslationUpfront: true,
     });
 }

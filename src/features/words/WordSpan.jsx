@@ -49,6 +49,11 @@ export default function WordSpan({ token, onPracticeWord, textClassName }) {
         }
     }
 
+    function handleToggleFlag(e) {
+        e.stopPropagation();
+        if (entry) updateWord(entry.id, { flagged: !entry.flagged });
+    }
+
     return (
         <>
             <span ref={wrapperRef} className="relative inline-block" style={{ touchAction: 'manipulation' }}
@@ -79,22 +84,19 @@ export default function WordSpan({ token, onPracticeWord, textClassName }) {
 
                             <div className="flex gap-3 border-t border-gray-600 pt-1">
                                 <button
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        setTooltipOpen(false);
-                                        setEditing(true);
-                                    }}
+                                    onClick={(e) => { e.stopPropagation(); setTooltipOpen(false); setEditing(true); }}
                                     className="text-left text-blue-300 text-xs underline hover:text-blue-200"
                                 >
                                     {entry ? 'Edit' : '+ Add definition'}
                                 </button>
+                                {entry && (
+                                    <button onClick={handleToggleFlag} className="text-left text-xs underline text-orange-300 hover:text-orange-200">
+                                        {entry.flagged ? '🚩 Unflag' : '🚩 Flag'}
+                                    </button>
+                                )}
                                 {onPracticeWord && (
                                     <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            setTooltipOpen(false);
-                                            onPracticeWord(token.key);
-                                        }}
+                                        onClick={(e) => { e.stopPropagation(); setTooltipOpen(false); onPracticeWord(token.key); }}
                                         className="text-left text-yellow-300 text-xs underline hover:text-yellow-200"
                                     >
                                         Practice this word →

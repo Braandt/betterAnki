@@ -14,6 +14,7 @@ import AudioRecorder from '../../components/AudioRecorder';
 import ExpressionList from '../../components/ExpressionList';
 import { resolveConfirmedExpressions } from '../../lib/expressions';
 import { buildAutoClozeFromMistake } from '../../lib/autoCloze';
+import { isExactMatch } from '../../lib/compareAnswer';
 
 export default function ReviewScreen({
     phrases,
@@ -29,15 +30,14 @@ export default function ReviewScreen({
     const { getAudioUrl, wordDict, updateWord, saveAudio } = useApp();
 
     const [queueIds, setQueueIds] = useState(() =>
-        phrases
-            .filter((p) => {
+        shuffle(
+            phrases.filter((p) => {
                 const dueOk = includeAll || isDue(p);
                 const tagsOk = filterTags.every((t) => (p.tags || []).includes(t));
                 const wordsOk = filterWords.length === 0 || filterWords.some((w) => phraseContainsWord(p, w));
                 return dueOk && tagsOk && wordsOk;
             })
-            .sort((a, b) => (a.srs?.due ?? 0) - (b.srs?.due ?? 0))
-            .map((p) => p.id)
+        ).map((p) => p.id)
     );
 
     const [revealed, setRevealed] = useState(false);
@@ -216,6 +216,10 @@ export default function ReviewScreen({
         }
     }
 
+    function shuffle(arr) {
+        return [...arr].sort(() => Math.random() - 0.5);
+    }
+
     useEffect(() => {
         function handleKeyDown(e) {
             const tag = e.target.tagName;
@@ -263,7 +267,9 @@ export default function ReviewScreen({
                 } else if (cardType === 'cloze' && isChecked) {
                     handleGrade(autoGrade);
                 } else if (isChecked) {
-                    handleGrade('easy');
+                    const correctAnswer = current.direction === 'production' ? current.text : current.answer;
+                    const grade = cardType === 'input' && !isExactMatch(userAnswer, correctAnswer) ? 'difficult' : 'easy';
+                    handleGrade(grade);
                 }
                 return;
             }

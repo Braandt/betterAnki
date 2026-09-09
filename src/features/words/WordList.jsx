@@ -9,6 +9,7 @@ import { FORM_FIELDS } from '../../lib/wordForms';
 
 const MASTERY_FILTERS = [
     { id: 'all', label: 'All' },
+    { id: 'flagged', label: '🚩 Flagged' },
     { id: 'weak', label: 'Weak' },
     { id: 'learning', label: 'Learning' },
     { id: 'strong', label: 'Strong' },
@@ -91,6 +92,16 @@ function WordDetailPanel({ word, onBack, onEdit, onDelete }) {
                 <p className="text-xs text-muted mt-1">{word.mastery?.correct ?? 0} correct · {word.mastery?.wrong ?? 0} wrong</p>
             </div>
 
+            <div className="flex items-center gap-2 mt-1">
+                <span className={`text-xs px-2 py-0.5 rounded-full ${colorClasses[color]}`}>{label} · {score}</span>
+                <button
+                    onClick={() => updateWord(word.id, { flagged: !word.flagged })}
+                    className={`text-xs px-2 py-0.5 rounded-full border ${word.flagged ? 'bg-orange-50 text-orange-600 border-orange-200' : 'text-muted border-border'}`}
+                >
+                    {word.flagged ? '🚩 Flagged' : '🚩 Flag this word'}
+                </button>
+            </div>
+
             {word.topicTags?.length > 0 && (
                 <div className="border-t border-border mt-4 pt-4">
                     <p className="text-xs text-faint mb-2">Topics</p>
@@ -140,6 +151,7 @@ export default function WordList() {
             .filter((w) => !q || w.text.includes(q) || w.definition.toLowerCase().includes(q))
             .filter((w) => {
                 if (masteryFilter === 'all') return true;
+                if (masteryFilter === 'flagged') return !!w.flagged;
                 const { label } = masteryLabel(w.mastery?.score ?? 50);
                 return label.toLowerCase() === masteryFilter;
             })
@@ -219,6 +231,7 @@ export default function WordList() {
                                     <span className="text-xs bg-surface-sunken text-muted px-2 py-0.5 rounded-full capitalize">{word.partOfSpeech}</span>
                                 )}
                                 <span className={`text-xs px-2 py-0.5 rounded-full ${colorClasses[color]}`}>{label} · {word.mastery?.score ?? 50}</span>
+                                {word.flagged && <span className="text-xs">🚩</span>}
                                 {word.hasAudio && <span className="text-xs text-faint">🎤</span>}
                             </div>
                             <p className="text-sm text-muted">{word.definition}</p>

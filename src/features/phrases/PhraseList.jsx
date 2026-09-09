@@ -1,11 +1,9 @@
 // features/phrases/PhraseList.jsx
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
-import { getAllTags } from '../../lib/tags';
 import { isDue } from '../../lib/srs';
 import { tokenize } from '../../lib/tokenize';
 import PhraseModal from './PhraseModal';
-import { relativeTime } from '../../lib/relativeTime';
 import { findExpressionMatches } from '../../lib/expressions';
 import { getAllContexts } from '../../lib/contexts';
 
