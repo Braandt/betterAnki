@@ -11,6 +11,7 @@ import CustomStudyModal from './features/study/CustomStudyModal';
 import { isDue } from './lib/srs';
 import { getWeakWords } from './lib/wordMastery';
 import { tokenize } from './lib/tokenize';
+import BottomNav from './components/BottomNav';
 
 function TodayScreen({ phrases, words, onStartReview }) {
     const dueCount = phrases.filter(isDue).length;
@@ -113,7 +114,7 @@ function Home() {
                 onExpand={() => setFocusMode(false)}
             />
 
-            <div className="flex-1 relative">
+            <div className="flex-1 relative pb-16 md:pb-0">
                 {view === 'today' && <TodayScreen phrases={phrases} words={words} onStartReview={() => setView('review')} />}
 
                 {view === 'review' &&
@@ -152,7 +153,7 @@ function Home() {
 
                 <button
                     onClick={() => setShowAddPhrase(true)}
-                    className="fixed bottom-6 right-6 bg-accent text-white rounded-full w-14 h-14 text-2xl shadow-lg hover:bg-accent-hover"
+                    className="fixed bottom-20 md:bottom-6 right-6 bg-accent text-white rounded-full w-14 h-14 text-2xl shadow-lg hover:bg-accent-hover z-20"
                     title="Add phrase (a)"
                 >
                     +
@@ -166,6 +167,13 @@ function Home() {
                     onStart={(filter) => { setStudyFilter(filter); setView('review'); }}
                 />
             </div>
+
+            <BottomNav
+                view={view}
+                onChange={handleViewChange}
+                dueCount={dueCount}
+                onCustomStudy={() => { setPrefillWords([]); setShowCustomStudy(true); }}
+            />
         </div>
     );
 }
