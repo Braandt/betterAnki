@@ -63,6 +63,7 @@ export default function ClozeCard({ phrase, onSubmitted, onPracticeWord, onFirst
     const [firstResults, setFirstResults] = useState(null);
     const [retryValues, setRetryValues] = useState(() => clozeIndices.map(() => ''));
     const [corrected, setCorrected] = useState(() => clozeIndices.map(() => false));
+    const [showWordHints, setShowWordHints] = useState(false);
     const inputRefs = useRef([]);
 
     useEffect(() => {
@@ -71,6 +72,7 @@ export default function ClozeCard({ phrase, onSubmitted, onPracticeWord, onFirst
         setCorrected(clozeIndices.map(() => false));
         setFirstResults(null);
         setPhase('answering');
+        setShowWordHints(false); // start collapsed on every new card
         inputRefs.current[0]?.focus();
     }, [phrase.id]);
 
@@ -231,8 +233,29 @@ export default function ClozeCard({ phrase, onSubmitted, onPracticeWord, onFirst
             )}
 
             {wordHints.length > 0 && (
-                <div className="flex flex-col gap-0.5 text-left max-w-md w-full mt-2">
-                    {wordHints.map((hint, i) => <p key={i} className="text-sm text-muted">{hint}</p>)}
+                <div className="flex flex-col items-start gap-1 bg-accent-soft text-accent-soft-text p-1 rounded-md">
+                    <button
+                        type="button"
+                        onClick={() => setShowWordHints((s) => !s)}
+                        className="flex items-center gap-1 text-sm hover:text-muted transition-colors"
+                    >
+                        <span
+                            className="inline-block transition-transform duration-200 ease-in-out"
+                            style={{ transform: showWordHints ? 'rotate(90deg)' : 'rotate(0deg)' }}
+                        >
+                            ▸
+                        </span>
+                        {showWordHints ? 'Hide word meanings' : 'Show word meanings'}
+                    </button>
+
+                    <div
+                        className="overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out"
+                        style={{ maxHeight: showWordHints ? `${wordHints.length * 28 + 8}px` : '0px', opacity: showWordHints ? 1 : 0 }}
+                    >
+                        <div className="flex flex-col gap-0.5 pt-1">
+                            {wordHints.map((hint, i) => <p key={i} className="text-sm text-muted">{hint}</p>)}
+                        </div>
+                    </div>
                 </div>
             )}
 

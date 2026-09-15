@@ -439,15 +439,55 @@ export default function ReviewScreen({
                     </div>
                 )}
 
-                <div className="border-t border-border pt-3 flex justify-center gap-5 text-xs text-faint pb-6">
-                    <span>e edit</span>
-                    <span>d duplicate</span>
-                    {current.hasAudio ? (
-                        <span>r replay</span>
-                    ) : (
-                        isChecked && <span>r record</span>
-                    )}
-                    {history.length > 0 && <span>b back</span>}
+                <div className="border-t border-border pt-3 pb-6">
+                    {/* Desktop: compact key hints, since the shortcuts already work via keyboard */}
+                    <div className="hidden md:flex justify-center gap-5 text-xs text-faint">
+                        <span>e edit</span>
+                        <span>d duplicate</span>
+                        {current.hasAudio ? <span>r replay</span> : isChecked && <span>r record</span>}
+                        {history.length > 0 && <span>b back</span>}
+                    </div>
+
+                    {/* Mobile: real tappable buttons, since there's no keyboard to trigger these */}
+                    <div className="flex md:hidden justify-center gap-2 flex-wrap">
+                        <button
+                            onClick={() => setEditingPhrase(true)}
+                            className="flex items-center gap-1 text-xs text-muted bg-surface-sunken px-3 py-2 rounded-lg"
+                        >
+                            ✏️ Edit
+                        </button>
+                        <button
+                            onClick={() => setDuplicatingPhrase(true)}
+                            className="flex items-center gap-1 text-xs text-muted bg-surface-sunken px-3 py-2 rounded-lg"
+                        >
+                            📄 Duplicate
+                        </button>
+                        {current.hasAudio ? (
+                            <button
+                                onClick={replayAudio}
+                                className="flex items-center gap-1 text-xs text-muted bg-surface-sunken px-3 py-2 rounded-lg"
+                            >
+                                🔊 Replay
+                            </button>
+                        ) : (
+                            isChecked && (
+                                <button
+                                    onClick={() => setRecordingAudio(true)}
+                                    className="flex items-center gap-1 text-xs text-muted bg-surface-sunken px-3 py-2 rounded-lg"
+                                >
+                                    🎤 Record
+                                </button>
+                            )
+                        )}
+                        {history.length > 0 && (
+                            <button
+                                onClick={goBack}
+                                className="flex items-center gap-1 text-xs text-muted bg-surface-sunken px-3 py-2 rounded-lg"
+                            >
+                                ↩️ Back
+                            </button>
+                        )}
+                    </div>
                 </div>
             </div>
 

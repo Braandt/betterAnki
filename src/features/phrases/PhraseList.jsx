@@ -1,11 +1,11 @@
-// features/phrases/PhraseList.jsx
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
 import { isDue } from '../../lib/srs';
 import { tokenize } from '../../lib/tokenize';
 import PhraseModal from './PhraseModal';
 import { findExpressionMatches } from '../../lib/expressions';
 import { getAllContexts } from '../../lib/contexts';
+import { getSupportedMimeType } from '../../lib/audioFormat';
 
 const STATUS_FILTERS = ['All', 'Due', 'New', 'Learned'];
 
@@ -95,27 +95,58 @@ function PhraseDetailPanel({ phrase, onBack, onEdit, onDelete, onPractice }) {
 }
 
 export default function PhraseList({ onPractice }) {
-    const { phrases, deletePhrase } = useApp();
+    const { phrases, deletePhrase, saveAudio, updatePhrase } = useApp();
     const [search, setSearch] = useState('');
     const [status, setStatus] = useState('All');
     const [selected, setSelected] = useState(null);
     const [editingPhrase, setEditingPhrase] = useState(null);
     const [context, setContext] = useState('');
     const allContexts = getAllContexts(phrases);
+    const [recordingId, setRecordingId] = useState(null);
+    const [audioOnlyMissing, setAudioOnlyMissing] = useState(false);
+    const mediaRecorderRef = useRef(null);
+    const chunksRef = useRef([]);
+
+    async function startRecording(phrase, e) {
+        e.stopPropagation();
+        const mimeType = getSupportedMimeType();
+        if (!mimeType) return;
+
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const recorder = new MediaRecorder(stream, { mimeType });
+            chunksRef.current = [];
+            recorder.ondataavailable = (ev) => chunksRef.current.push(ev.data);
+            recorder.onstop = async () => {
+                const blob = new Blob(chunksRef.current, { type: mimeType });
+                const ext = await saveAudio(phrase.id, blob, mimeType);
+                updatePhrase(phrase.id, { hasAudio: true, audioExt: ext });
+                stream.getTracks().forEach((t) => t.stop());
+                setRecordingId(null);
+            };
+            recorder.start();
+            mediaRecorderRef.current = recorder;
+            setRecordingId(phrase.id);
+        } catch {
+            // permission denied or no mic — silently no-op, same as elsewhere in the app
+        }
+    }
+
+    function stopRecording(e) {
+        e.stopPropagation();
+        mediaRecorderRef.current?.stop();
+    }
 
     const filtered = useMemo(() => {
         const q = search.toLowerCase().trim();
         return phrases.filter((p) => {
-            const matchesSearch =
-                !q ||
-                p.text.toLowerCase().includes(q) ||
-                p.answer.toLowerCase().includes(q) ||
-                (p.context || '').toLowerCase().includes(q);
+            const matchesSearch = !q || p.text.toLowerCase().includes(q) || p.answer.toLowerCase().includes(q) || (p.context || '').toLowerCase().includes(q);
             const matchesStatus = status === 'All' || statusOf(p) === status;
             const matchesContext = context === '' || p.context === context;
-            return matchesSearch && matchesStatus && matchesContext;
+            const matchesAudio = !audioOnlyMissing || !p.hasAudio;
+            return matchesSearch && matchesStatus && matchesContext && matchesAudio;
         });
-    }, [phrases, search, status, context]);
+    }, [phrases, search, status, context, audioOnlyMissing]);
 
     if (selected) {
         const phrase = phrases.find((p) => p.id === selected.id) ?? selected;
@@ -181,26 +212,56 @@ export default function PhraseList({ onPractice }) {
                 </div>
             )}
 
+            <button
+                onClick={() => setAudioOnlyMissing((v) => !v)}
+                className={`text-xs px-3 py-1.5 rounded-full border mb-4 ${audioOnlyMissing ? 'bg-accent text-white border-accent' : 'text-muted border-border hover:bg-surface-sunken'
+                    }`}
+            >
+                🎤 Missing audio only
+            </button>
+
             {filtered.length === 0 && <p className="text-muted text-sm">No phrases found.</p>}
 
             <div className="flex flex-col gap-2">
                 {filtered.map((phrase) => {
                     const s = statusOf(phrase);
                     const dot = { Due: 'bg-danger', New: 'bg-accent', Learned: 'bg-success' }[s];
+                    const isRecording = recordingId === phrase.id;
+
                     return (
-                        <button
+                        <div
                             key={phrase.id}
-                            onClick={() => setSelected(phrase)}
-                            className="bg-surface border border-border rounded-xl px-4 py-3 text-left hover:border-border-strong"
+                            className="bg-surface border border-border rounded-xl px-4 py-3 flex items-center gap-2 hover:border-border-strong"
                         >
-                            <p className="font-voice text-base text-ink">{phrase.text}</p>
-                            <div className="flex items-center justify-between mt-1">
-                                <p className="text-xs text-muted">{phrase.answer}</p>
-                                <span className="flex items-center gap-1.5 text-xs text-faint">
-                                    <span className={`w-1.5 h-1.5 rounded-full ${dot}`}></span>{s}
-                                </span>
+                            <button onClick={() => setSelected(phrase)} className="flex-1 text-left min-w-0">
+                                <p className="font-voice text-base text-ink truncate">{phrase.text}</p>
+                                <div className="flex items-center justify-between mt-1 gap-2">
+                                    <p className="text-xs text-muted truncate">{phrase.answer}</p>
+                                    <span className="flex items-center gap-1.5 text-xs text-faint shrink-0">
+                                        <span className={`w-1.5 h-1.5 rounded-full ${dot}`}></span>{s}
+                                    </span>
+                                </div>
+                            </button>
+
+                            <div className="flex md:hidden shrink-0">
+                                {isRecording ? (
+                                    <button
+                                        onClick={stopRecording}
+                                        className="flex items-center gap-1.5 text-xs text-white bg-danger px-3 py-2 rounded-lg"
+                                    >
+                                        <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+                                        Stop
+                                    </button>
+                                ) : (
+                                    <button
+                                        onClick={(e) => startRecording(phrase, e)}
+                                        className={`text-sm px-3 py-2 rounded-lg ${phrase.hasAudio ? 'text-muted bg-surface-sunken' : 'text-white bg-accent'}`}
+                                    >
+                                        🎤
+                                    </button>
+                                )}
                             </div>
-                        </button>
+                        </div>
                     );
                 })}
             </div>
