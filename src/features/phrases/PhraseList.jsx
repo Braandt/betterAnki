@@ -177,7 +177,7 @@ export default function PhraseList({ onPractice }) {
                 className="border border-border rounded-lg px-3 py-2 w-full mb-3 bg-surface text-sm"
             />
 
-            <div className="flex gap-1.5 mb-4">
+            <div className="flex flex-wrap gap-1.5 mb-2">
                 {STATUS_FILTERS.map((s) => (
                     <button
                         key={s}
@@ -235,8 +235,8 @@ export default function PhraseList({ onPractice }) {
                         >
                             <button onClick={() => setSelected(phrase)} className="flex-1 text-left min-w-0">
                                 <p className="font-voice text-base text-ink truncate">{phrase.text}</p>
-                                <div className="flex items-center justify-between mt-1 gap-2">
-                                    <p className="text-xs text-muted truncate">{phrase.answer}</p>
+                                <div className="flex items-center justify-between mt-1 gap-2 min-w-0">
+                                    <p className="text-xs text-muted truncate min-w-0">{phrase.answer}</p>
                                     <span className="flex items-center gap-1.5 text-xs text-faint shrink-0">
                                         <span className={`w-1.5 h-1.5 rounded-full ${dot}`}></span>{s}
                                     </span>
