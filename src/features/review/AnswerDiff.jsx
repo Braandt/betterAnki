@@ -1,4 +1,3 @@
-// features/review/AnswerDiff.jsx
 import { diffWords, isExactMatch } from '../../lib/compareAnswer';
 import WordSpan from '../words/WordSpan';
 import ExpressionList from '../../components/ExpressionList';

@@ -114,7 +114,7 @@ function Home() {
                 onExpand={() => setFocusMode(false)}
             />
 
-            <div className="flex-1 relative pb-16 md:pb-0">
+            <div className="flex-1 relative pb-16 md:pb-0 min-w-0">
                 {view === 'today' && <TodayScreen phrases={phrases} words={words} onStartReview={() => setView('review')} />}
 
                 {view === 'review' &&

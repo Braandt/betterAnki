@@ -45,7 +45,7 @@ function PhraseDetailPanel({ phrase, onBack, onEdit, onDelete, onPractice }) {
 
             <div className="border-t border-border mt-5 pt-4">
                 <p className="text-xs text-faint mb-2">Words</p>
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-2  min-w-0">
                     {plainWordTokens.map((t, i) => {
                         const entry = wordDict[t.key];
                         return (
@@ -61,7 +61,7 @@ function PhraseDetailPanel({ phrase, onBack, onEdit, onDelete, onPractice }) {
             {expressionMatches.length > 0 && (
                 <div className="border-t border-border mt-4 pt-4">
                     <p className="text-xs text-faint mb-2">Expressions</p>
-                    <div className="flex flex-col gap-2">
+                    <div className="flex flex-col gap-2  min-w-0">
                         {expressionMatches.map((m, i) => (
                             <div key={i} className="flex justify-between text-sm gap-3">
                                 <span className="text-ink capitalize">{m.key}</span>
@@ -222,7 +222,7 @@ export default function PhraseList({ onPractice }) {
 
             {filtered.length === 0 && <p className="text-muted text-sm">No phrases found.</p>}
 
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2 min-w-0">
                 {filtered.map((phrase) => {
                     const s = statusOf(phrase);
                     const dot = { Due: 'bg-danger', New: 'bg-accent', Learned: 'bg-success' }[s];
@@ -231,7 +231,7 @@ export default function PhraseList({ onPractice }) {
                     return (
                         <div
                             key={phrase.id}
-                            className="bg-surface border border-border rounded-xl px-4 py-3 flex items-center gap-2 hover:border-border-strong"
+                            className="bg-surface border border-border rounded-xl px-4 py-3 flex items-center gap-2 hover:border-border-strong min-w-0 w-full"
                         >
                             <button onClick={() => setSelected(phrase)} className="flex-1 text-left min-w-0">
                                 <p className="font-voice text-base text-ink truncate">{phrase.text}</p>

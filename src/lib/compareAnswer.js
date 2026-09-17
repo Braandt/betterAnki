@@ -49,5 +49,9 @@ export function diffWords(userAnswer, correctAnswer) {
 }
 
 export function isExactMatch(userAnswer, correctAnswer) {
+    if (correctAnswer.at(-1) === '?' && userAnswer.at(-1) !== '?') {
+        // If the correct answer ends with a question mark, allow the user to omit it.
+        return normalize(userAnswer).toLowerCase() === normalize(correctAnswer.slice(0, -1)).toLowerCase();
+    }
     return normalize(userAnswer).toLowerCase() === normalize(correctAnswer).toLowerCase();
 }
